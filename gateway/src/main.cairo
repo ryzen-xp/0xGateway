@@ -1,10 +1,9 @@
 /// @ryzen-xp
 #[starknet::contract]
 mod Gateway {
-    use starknet::storage::{StoragePointerReadAccess, StoragePointerWriteAccess};
-
     //module imports
     use gateway::interface::IGateway;
+    use starknet::storage::{StoragePointerReadAccess, StoragePointerWriteAccess};
 
     #[storage]
     struct Storage {

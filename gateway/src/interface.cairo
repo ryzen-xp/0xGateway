@@ -1,4 +1,3 @@
-
 #[starknet::interface]
 pub trait IGateway<TContractState> {
     /// Increase contract balance.
