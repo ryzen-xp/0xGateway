@@ -14,5 +14,7 @@ pub struct Wallet {
     pub chain_id: felt252,
     pub address: felt252,
     pub memo: Option<u128>,
+    pub tag: Option<u128>,
+    pub metadata: Option<ByteArray>,
     pub updated_at: u64,
 }

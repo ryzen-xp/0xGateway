@@ -2,27 +2,30 @@
 mod Gateway {
     use core::num::traits::Zero;
     use gateway::errors::Errors;
-    use gateway::events::UsernameRegistered;
+    use gateway::events::{UsernameRegistered, WalletAdded};
     use gateway::interface::IGateway;
     use gateway::types::{UserInfo, Wallet};
     use gateway::utils::hash_username;
     use starknet::storage::{
-        Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePointerReadAccess,
-        StoragePointerWriteAccess,
+        Map, MutableVecTrait, StorageMapReadAccess, StorageMapWriteAccess, StoragePathEntry,
+        StoragePointerReadAccess, StoragePointerWriteAccess, Vec, VecTrait,
     };
     use starknet::{ContractAddress, get_block_timestamp, get_caller_address};
 
     #[storage]
     struct Storage {
         usernames: Map<felt252, UserInfo>,
-        user_wallets: Map<felt252, Wallet>,
         address_usernames: Map<ContractAddress, ByteArray>,
+        user_chain_ids: Map<felt252, Vec<felt252>>,
+        // Map from (username_hash, chain_id) to Wallet
+        user_wallets: Map<(felt252, felt252), Wallet>,
     }
 
     #[event]
     #[derive(Drop, starknet::Event)]
     enum Event {
         UsernameRegistered: UsernameRegistered,
+        WalletAdded: WalletAdded,
     }
 
     #[abi(embed_v0)]
@@ -38,7 +41,7 @@ mod Gateway {
             let username_hash = hash_username(username.clone());
 
             let new_user = UserInfo {
-                username: username.clone(), user_address: caller, active: false,
+                username: username.clone(), user_address: caller, active: true,
             };
 
             self.usernames.write(username_hash, new_user);
@@ -54,11 +57,108 @@ mod Gateway {
                 );
         }
 
-        /// Add Diffrent wallet address
-
+        /// Add Different wallet address for different chains
         fn add_wallets(
-            ref self: ContractState, chain_id: felt252, wallet_address: felt252, memo: u128,
-        ) {}
+            ref self: ContractState,
+            chain_id: felt252,
+            wallet_address: felt252,
+            memo: Option<u128>,
+            tag: Option<u128>,
+            metadata: Option<ByteArray>,
+        ) {
+            assert(chain_id.is_non_zero(), Errors::INVALID_CHAIN_ID);
+            assert(wallet_address.is_non_zero(), Errors::INVALID_WALLET_ADDRESS);
+
+            let caller = get_caller_address();
+            let username = self.get_username(caller);
+
+            assert(username.len() != 0, Errors::USER_NOT_REGISTERED);
+
+            let username_hash = hash_username(username);
+
+            // Check if this chain_id already exists for this user
+            let chain_exists = self._check_chain_exists(username_hash, chain_id);
+
+            // If chain doesn't exist, add it to the Vec
+            if !chain_exists {
+                let mut chain_ids = self.user_chain_ids.entry(username_hash);
+                chain_ids.append().write(chain_id);
+            }
+
+            // Create or update wallet entry
+            let new_wallet = Wallet {
+                chain_id,
+                address: wallet_address,
+                memo,
+                tag,
+                metadata,
+                updated_at: get_block_timestamp(),
+            };
+
+            // Store wallet with composite key (username_hash, chain_id)
+            self.user_wallets.write((username_hash, chain_id), new_wallet);
+
+            self
+                .emit(
+                    Event::WalletAdded(
+                        WalletAdded {
+                            user_address: caller,
+                            chain_id,
+                            wallet_address,
+                            timestamp: get_block_timestamp(),
+                        },
+                    ),
+                );
+        }
+
+        /// Get wallet for a specific chain
+        fn get_wallet(self: @ContractState, username: ByteArray, chain_id: felt252) -> Wallet {
+            assert(username.len() != 0, Errors::INVALID_USERNAME);
+            assert(chain_id.is_non_zero(), Errors::INVALID_CHAIN_ID);
+
+            let username_hash = hash_username(username);
+            self.user_wallets.read((username_hash, chain_id))
+        }
+
+        /// Get all chain IDs for a user
+        fn get_user_chain_ids(self: @ContractState, username: ByteArray) -> Array<felt252> {
+            assert(username.len() != 0, Errors::INVALID_USERNAME);
+
+            let username_hash = hash_username(username);
+            let chain_ids_vec = self.user_chain_ids.entry(username_hash);
+
+            let mut chain_ids_array = ArrayTrait::new();
+            let len = chain_ids_vec.len();
+
+            let mut i: u64 = 0;
+            while i != len {
+                chain_ids_array.append(chain_ids_vec.at(i).read());
+                i += 1;
+            }
+
+            chain_ids_array
+        }
+
+        /// Get all wallets for a user
+        fn get_all_user_wallets(self: @ContractState, username: ByteArray) -> Array<Wallet> {
+            assert(username.len() != 0, Errors::INVALID_USERNAME);
+
+            let username_hash = hash_username(username);
+            let chain_ids_vec = self.user_chain_ids.entry(username_hash);
+
+            let mut wallets = ArrayTrait::new();
+            let len = chain_ids_vec.len();
+
+            let mut i: u64 = 0;
+            while i != len {
+                let chain_id = chain_ids_vec.at(i).read();
+                let wallet = self.user_wallets.read((username_hash, chain_id));
+                wallets.append(wallet);
+                i += 1;
+            }
+
+            wallets
+        }
 
         // Check if the username exists on-chain
         fn check_username_exist(self: @ContractState, username: ByteArray) -> bool {
@@ -75,11 +175,32 @@ mod Gateway {
             user
         }
 
-        // get username
+        // Get username
         fn get_username(self: @ContractState, address: ContractAddress) -> ByteArray {
             assert(address.is_non_zero(), Errors::INVALID_ADDRESS);
-
             self.address_usernames.read(address)
+        }
+    }
+
+    // Internal functions
+    #[generate_trait]
+    impl InternalFunctions of InternalFunctionsTrait {
+        fn _check_chain_exists(
+            self: @ContractState, username_hash: felt252, chain_id: felt252,
+        ) -> bool {
+            let chain_ids = self.user_chain_ids.entry(username_hash);
+            let len = chain_ids.len();
+
+            let mut i: u64 = 0;
+            loop {
+                if i >= len {
+                    break false;
+                }
+                if chain_ids.at(i).read() == chain_id {
+                    break true;
+                }
+                i += 1;
+            }
         }
     }
 }
