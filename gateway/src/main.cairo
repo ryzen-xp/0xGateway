@@ -30,14 +30,15 @@ mod Gateway {
         /// Register a new username (unique)
         fn register_username(ref self: ContractState, username: ByteArray) {
             assert(username.len() != 0, Errors::INVALID_USERNAME);
+
             let caller = get_caller_address();
-            assert(self.get_username(caller).len() != 0, Errors::CALLER_ALREADY_HAVE_USERNAME);
+            assert(self.get_username(caller).len() == 0, Errors::CALLER_ALREADY_HAVE_USERNAME);
             assert(!self.check_username_exist(username.clone()), Errors::USERNAME_TAKEN);
 
             let username_hash = hash_username(username.clone());
 
             let new_user = UserInfo {
-                username: username.clone(), user_address: get_caller_address(), active: false,
+                username: username.clone(), user_address: caller, active: false,
             };
 
             self.usernames.write(username_hash, new_user);
