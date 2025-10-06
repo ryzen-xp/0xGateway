@@ -55,9 +55,11 @@ mod Gateway {
 
         /// Add Diffrent wallet address
 
-        // fn add_wallets(
-        //     ref self: ContractState, chain_id: felt252, wallet_address: felt252, memo: u128,
-        // ) {}
+        fn add_wallets(
+            ref self: ContractState, chain_id: felt252, wallet_address: felt252, memo: u128,
+        ) {
+            
+        }
 
         // Check if the username exists on-chain
         fn check_username_exist(self: @ContractState, username: ByteArray) -> bool {
