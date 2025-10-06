@@ -13,6 +13,6 @@ pub struct UserInfo {
 pub struct Wallet {
     pub chain_id: felt252,
     pub address: felt252,
-    pub memo: Option<i128>,
+    pub memo: Option<u128>,
     pub updated_at: u64,
 }

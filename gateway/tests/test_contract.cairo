@@ -1,44 +1,52 @@
-// use starknet::ContractAddress;
+use gateway::interface::{IGatewayDispatcher, IGatewayDispatcherTrait};
+use snforge_std_deprecated::{
+    ContractClassTrait, DeclareResultTrait, EventSpyTrait, declare, spy_events,
+};
+use starknet::{ContractAddress, get_block_timestamp, get_caller_address};
 
-// use snforge_std_deprecated::{declare, ContractClassTrait, DeclareResultTrait};
 
-// use gateway::interface::IGatewayDispatcher;
+fn deploy_contract() -> ContractAddress {
+    let contract = declare("Gateway").unwrap().contract_class();
+    let (contract_address, _) = contract.deploy(@ArrayTrait::new()).unwrap();
+    contract_address
+}
 
-// fn deploy_contract(name: ByteArray) -> ContractAddress {
-//     let contract = declare(name).unwrap().contract_class();
-//     let (contract_address, _) = contract.deploy(@ArrayTrait::new()).unwrap();
-//     contract_address
-// }
 
-// #[test]
-// fn test_increase_balance() {
-//     let contract_address = deploy_contract("HelloStarknet");
+#[test]
+fn test_reg_username_pass() {
+    let contract_address = deploy_contract();
+    let dispatcher = IGatewayDispatcher { contract_address };
 
-//     let dispatcher = IHelloStarknetDispatcher { contract_address };
+    let username: ByteArray = "ryzen_xp";
 
-//     let balance_before = dispatcher.get_balance();
-//     assert(balance_before == 0, 'Invalid balance');
+    let mut spy = spy_events();
 
-//     dispatcher.increase_balance(42);
+    dispatcher.register_username(username.clone());
 
-//     let balance_after = dispatcher.get_balance();
-//     assert(balance_after == 42, 'Invalid balance');
-// }
+    let events = spy.get_events();
+    assert(events.events.len() == 1, 'Should emit 1 event');
+}
 
-// #[test]
-// #[feature("safe_dispatcher")]
-// fn test_cannot_increase_balance_with_zero_value() {
-//     let contract_address = deploy_contract("HelloStarknet");
+#[test]
+#[should_panic(expected: ('Invalid username',))]
+fn test_reg_username_failed() {
+    let contract_address = deploy_contract();
+    let dispatcher = IGatewayDispatcher { contract_address };
 
-//     let safe_dispatcher = IHelloStarknetSafeDispatcher { contract_address };
+    let username: ByteArray = "";
 
-//     let balance_before = safe_dispatcher.get_balance().unwrap();
-//     assert(balance_before == 0, 'Invalid balance');
+    dispatcher.register_username(username);
+}
 
-//     match safe_dispatcher.increase_balance(0) {
-//         Result::Ok(_) => core::panic_with_felt252('Should have panicked'),
-//         Result::Err(panic_data) => {
-//             assert(*panic_data.at(0) == 'Amount cannot be 0', *panic_data.at(0));
-//         }
-//     };
-// }
+#[test]
+#[should_panic(expected: ('Username already exists',))]
+fn test_reg_same_username() {
+    let contract_address = deploy_contract();
+    let dispatcher = IGatewayDispatcher { contract_address };
+
+    let username: ByteArray = "ryzen_xp";
+
+    dispatcher.register_username(username.clone());
+
+    dispatcher.register_username(username);
+}
