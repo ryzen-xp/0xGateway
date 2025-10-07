@@ -23,8 +23,8 @@ jobs:
           asdf global scarb 2.10.1
 
           asdf plugin add starknet-foundry || true
-          asdf install starknet-foundry 0.48.0
-          asdf global starknet-foundry 0.48.0
+          asdf install starknet-foundry 0.48.1
+          asdf global starknet-foundry 0.48.1
 
       - name: Build contracts
         working-directory: gateway

@@ -1,7 +1,6 @@
 #[starknet::contract]
 mod Gateway {
-    use core::num::traits::Zero;
-    use core::option::OptionTrait;
+    use core::num::traits::Zero; 
     use gateway::errors::Errors;
     use gateway::events::{
         AccountDeactivated, AccountReactivated, UserAddressChanged, UsernameRegistered, WalletAdded,

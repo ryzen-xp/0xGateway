@@ -141,9 +141,9 @@ fn test_add_multiple_wallets() {
     let username: ByteArray = "ryzen_xp";
     dispatcher.register_username(username.clone());
 
-    dispatcher.add_wallets(1, 0x111, Option::None, Option::None, Option::None);
-    dispatcher.add_wallets(2, 0x222, Option::None, Option::None, Option::None);
-    dispatcher.add_wallets(3, 0x333, Option::None, Option::None, Option::None);
+    dispatcher.add_wallets('STRK', 0x111, Option::None, Option::None, Option::None);
+    dispatcher.add_wallets('ETH', 0x222, Option::None, Option::None, Option::None);
+    dispatcher.add_wallets('BNB', 0x333, Option::None, Option::None, Option::None);
 
     let chain_ids = dispatcher.get_user_chain_ids(username);
     assert(chain_ids.len() == 3, 'Should have 3 chain IDs');
