@@ -2,7 +2,10 @@
 mod Gateway {
     use core::num::traits::Zero;
     use gateway::errors::Errors;
-    use gateway::events::{UsernameRegistered, WalletAdded, WalletRemoved};
+    use gateway::events::{
+        AccountDeactivated, AccountReactivated, UserAddressChanged, UsernameRegistered, WalletAdded,
+        WalletRemoved,
+    };
     use gateway::interface::IGateway;
     use gateway::types::{UserInfo, Wallet};
     use gateway::utils::hash_username;
@@ -27,10 +30,111 @@ mod Gateway {
         UsernameRegistered: UsernameRegistered,
         WalletAdded: WalletAdded,
         WalletRemoved: WalletRemoved,
+        UserAddressChanged: UserAddressChanged,
+        AccountDeactivated: AccountDeactivated,
+        AccountReactivated: AccountReactivated,
     }
 
     #[abi(embed_v0)]
     impl GatewayImpl of IGateway<ContractState> {
+        /// Change user address - transfers username to a new address
+        fn change_user_address(ref self: ContractState, new_address: ContractAddress) {
+            assert(new_address.is_non_zero(), Errors::INVALID_ADDRESS);
+
+            let caller = get_caller_address();
+            let username = self.address_usernames.read(caller);
+
+            assert(username.len() != 0, Errors::USER_NOT_REGISTERED);
+
+            assert(self.is_account_active(username.clone()), Errors::ACCOUNT_INACTIVE);
+
+            assert(
+                self.address_usernames.read(new_address).len() == 0,
+                Errors::ADDRESS_ALREADY_HAS_USERNAME,
+            );
+
+            let username_hash = hash_username(username.clone());
+
+            let mut user_info = self.usernames.read(username_hash);
+            user_info.user_address = new_address;
+            self.usernames.write(username_hash, user_info);
+
+            self.address_usernames.write(caller, "");
+
+            self.address_usernames.write(new_address, username.clone());
+
+            self
+                .emit(
+                    Event::UserAddressChanged(
+                        UserAddressChanged {
+                            username,
+                            old_address: caller,
+                            new_address,
+                            timestamp: get_block_timestamp(),
+                        },
+                    ),
+                );
+        }
+
+        /// Deactivate user account
+        fn deactivate_account(ref self: ContractState) {
+            let caller = get_caller_address();
+            let username = self.address_usernames.read(caller);
+
+            assert(username.len() != 0, Errors::USER_NOT_REGISTERED);
+
+            let username_hash = hash_username(username.clone());
+            let mut user_info = self.usernames.read(username_hash);
+
+            assert(user_info.active, Errors::ACCOUNT_ALREADY_INACTIVE);
+
+            user_info.active = false;
+            self.usernames.write(username_hash, user_info);
+
+            self
+                .emit(
+                    Event::AccountDeactivated(
+                        AccountDeactivated {
+                            username, user_address: caller, timestamp: get_block_timestamp(),
+                        },
+                    ),
+                );
+        }
+
+        /// Reactivate user account
+        fn reactivate_account(ref self: ContractState) {
+            let caller = get_caller_address();
+            let username = self.address_usernames.read(caller);
+
+            assert(username.len() != 0, Errors::USER_NOT_REGISTERED);
+
+            let username_hash = hash_username(username.clone());
+            let mut user_info = self.usernames.read(username_hash);
+
+            assert(!user_info.active, Errors::ACCOUNT_ALREADY_ACTIVE);
+
+            user_info.active = true;
+            self.usernames.write(username_hash, user_info);
+
+            self
+                .emit(
+                    Event::AccountReactivated(
+                        AccountReactivated {
+                            username, user_address: caller, timestamp: get_block_timestamp(),
+                        },
+                    ),
+                );
+        }
+
+        /// Check if user account is active
+        fn is_account_active(self: @ContractState, username: ByteArray) -> bool {
+            assert(username.len() != 0, Errors::INVALID_USERNAME);
+
+            let username_hash = hash_username(username);
+            let user_info = self.usernames.read(username_hash);
+            user_info.active
+        }
+
         /// Register a new username (unique)
         fn register_username(ref self: ContractState, username: ByteArray) {
             assert(username.len() != 0, Errors::INVALID_USERNAME);
@@ -74,6 +178,8 @@ mod Gateway {
             let username = self.get_username(caller);
 
             assert(username.len() != 0, Errors::USER_NOT_REGISTERED);
+
+            assert(self.is_account_active(username.clone()), Errors::ACCOUNT_INACTIVE);
 
             let username_hash = hash_username(username);
 
@@ -119,6 +225,8 @@ mod Gateway {
 
             assert(username.len() != 0, Errors::INVALID_USERNAME);
             assert(self.check_username_exist(username.clone()), Errors::USER_NOT_REGISTERED);
+
+            assert(self.is_account_active(username.clone()), Errors::ACCOUNT_INACTIVE);
 
             let username_hash = hash_username(username.clone());
 
@@ -177,6 +285,8 @@ mod Gateway {
             assert(username.len() != 0, Errors::INVALID_USERNAME);
             assert(chain_id.is_non_zero(), Errors::INVALID_CHAIN_ID);
 
+            assert(self.is_account_active(username.clone()), Errors::ACCOUNT_INACTIVE);
+
             let username_hash = hash_username(username);
             self.user_wallets.read((username_hash, chain_id))
         }
@@ -184,6 +294,8 @@ mod Gateway {
         /// Get all chain IDs for a user
         fn get_user_chain_ids(self: @ContractState, username: ByteArray) -> Array<felt252> {
             assert(username.len() != 0, Errors::INVALID_USERNAME);
+
+            assert(self.is_account_active(username.clone()), Errors::ACCOUNT_INACTIVE);
 
             let username_hash = hash_username(username);
             let chain_ids_vec = self.user_chain_ids.entry(username_hash);
@@ -203,6 +315,8 @@ mod Gateway {
         /// Get all wallets for a user
         fn get_all_user_wallets(self: @ContractState, username: ByteArray) -> Array<Wallet> {
             assert(username.len() != 0, Errors::INVALID_USERNAME);
+
+            assert(self.is_account_active(username.clone()), Errors::ACCOUNT_INACTIVE);
 
             let username_hash = hash_username(username);
             let chain_ids_vec = self.user_chain_ids.entry(username_hash);

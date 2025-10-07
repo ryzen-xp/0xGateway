@@ -3,6 +3,11 @@ use starknet::ContractAddress;
 
 #[starknet::interface]
 pub trait IGateway<TContractState> {
+    fn change_user_address(ref self: TContractState, new_address: ContractAddress);
+    fn deactivate_account(ref self: TContractState);
+    fn reactivate_account(ref self: TContractState);
+    fn is_account_active(self: @TContractState, username: ByteArray) -> bool;
+
     fn register_username(ref self: TContractState, username: ByteArray);
     fn check_username_exist(self: @TContractState, username: ByteArray) -> bool;
     fn add_wallets(

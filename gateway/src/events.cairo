@@ -22,3 +22,26 @@ pub struct WalletRemoved {
     pub chain_id: felt252,
     pub timestamp: u64,
 }
+
+
+#[derive(Drop, starknet::Event)]
+pub struct UserAddressChanged {
+    pub username: ByteArray,
+    pub old_address: ContractAddress,
+    pub new_address: ContractAddress,
+    pub timestamp: u64,
+}
+
+#[derive(Drop, starknet::Event)]
+pub struct AccountDeactivated {
+    pub username: ByteArray,
+    pub user_address: ContractAddress,
+    pub timestamp: u64,
+}
+
+#[derive(Drop, starknet::Event)]
+pub struct AccountReactivated {
+    pub username: ByteArray,
+    pub user_address: ContractAddress,
+    pub timestamp: u64,
+}
