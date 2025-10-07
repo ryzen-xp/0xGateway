@@ -1,6 +1,7 @@
 #[starknet::contract]
 mod Gateway {
     use core::num::traits::Zero;
+    use core::option::OptionTrait;
     use gateway::errors::Errors;
     use gateway::events::{
         AccountDeactivated, AccountReactivated, UserAddressChanged, UsernameRegistered, WalletAdded,
@@ -256,7 +257,7 @@ mod Gateway {
                     break;
                 }
                 idx += 1;
-            }
+            };
 
             assert(found, Errors::CHAIN_ID_NOT_FOUND);
 
@@ -307,7 +308,7 @@ mod Gateway {
             while i != len {
                 chain_ids_array.append(chain_ids_vec.at(i).read());
                 i += 1;
-            }
+            };
 
             chain_ids_array
         }
@@ -330,7 +331,7 @@ mod Gateway {
                 let wallet = self.user_wallets.read((username_hash, chain_id));
                 wallets.append(wallet);
                 i += 1;
-            }
+            };
 
             wallets
         }
