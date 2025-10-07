@@ -2,7 +2,7 @@
 mod Gateway {
     use core::num::traits::Zero;
     use gateway::errors::Errors;
-    use gateway::events::{UsernameRegistered, WalletAdded};
+    use gateway::events::{UsernameRegistered, WalletAdded, WalletRemoved};
     use gateway::interface::IGateway;
     use gateway::types::{UserInfo, Wallet};
     use gateway::utils::hash_username;
@@ -26,6 +26,7 @@ mod Gateway {
     enum Event {
         UsernameRegistered: UsernameRegistered,
         WalletAdded: WalletAdded,
+        WalletRemoved: WalletRemoved,
     }
 
     #[abi(embed_v0)]
@@ -85,7 +86,6 @@ mod Gateway {
                 chain_ids.append().write(chain_id);
             }
 
-            // Create or update wallet entry
             let new_wallet = Wallet {
                 chain_id,
                 address: wallet_address,
@@ -95,7 +95,6 @@ mod Gateway {
                 updated_at: get_block_timestamp(),
             };
 
-            // Store wallet with composite key (username_hash, chain_id)
             self.user_wallets.write((username_hash, chain_id), new_wallet);
 
             self
@@ -105,6 +104,68 @@ mod Gateway {
                             user_address: caller,
                             chain_id,
                             wallet_address,
+                            timestamp: get_block_timestamp(),
+                        },
+                    ),
+                );
+        }
+
+        ///  Remove Wallet from wallet list
+        fn remove_wallet(ref self: ContractState, chain_id: felt252) {
+            assert(chain_id.is_non_zero(), Errors::INVALID_CHAIN_ID);
+
+            let caller = get_caller_address();
+            let username = self.get_username(caller);
+
+            assert(username.len() != 0, Errors::INVALID_USERNAME);
+            assert(self.check_username_exist(username.clone()), Errors::USER_NOT_REGISTERED);
+
+            let username_hash = hash_username(username.clone());
+
+            // Verify the wallet exists for this chain
+            let wallet = self.user_wallets.read((username_hash, chain_id));
+            assert(wallet.address.is_non_zero(), Errors::WALLET_NOT_FOUND);
+
+            let empty_wallet = Wallet {
+                chain_id: 0,
+                address: 0,
+                memo: Option::None,
+                tag: Option::None,
+                metadata: Option::None,
+                updated_at: 0,
+            };
+            self.user_wallets.write((username_hash, chain_id), empty_wallet);
+
+            // Remove chain_id from the Vec
+            let mut chain_ids_vec = self.user_chain_ids.entry(username_hash);
+            let len = chain_ids_vec.len();
+
+            let mut idx: u64 = 0;
+            let mut found = false;
+            while idx != len {
+                if chain_ids_vec.at(idx).read() == chain_id {
+                    found = true;
+                    break;
+                }
+                idx += 1;
+            }
+
+            assert(found, Errors::CHAIN_ID_NOT_FOUND);
+
+            if idx != len - 1 {
+                let last_chain = chain_ids_vec.at(len - 1).read();
+                chain_ids_vec.at(idx).write(last_chain);
+            }
+
+            chain_ids_vec.pop().unwrap();
+
+            self
+                .emit(
+                    Event::WalletRemoved(
+                        WalletRemoved {
+                            user_address: caller,
+                            username,
+                            chain_id,
                             timestamp: get_block_timestamp(),
                         },
                     ),
@@ -182,7 +243,6 @@ mod Gateway {
         }
     }
 
-    // Internal functions
     #[generate_trait]
     impl InternalFunctions of InternalFunctionsTrait {
         fn _check_chain_exists(

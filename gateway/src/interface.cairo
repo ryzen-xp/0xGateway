@@ -13,6 +13,8 @@ pub trait IGateway<TContractState> {
         tag: Option<u128>,
         metadata: Option<ByteArray>,
     );
+    fn remove_wallet(ref self: TContractState, chain_id: felt252);
+
     fn get_user_info(self: @TContractState, username: ByteArray) -> UserInfo;
     fn get_username(self: @TContractState, address: ContractAddress) -> ByteArray;
     fn get_wallet(self: @TContractState, username: ByteArray, chain_id: felt252) -> Wallet;

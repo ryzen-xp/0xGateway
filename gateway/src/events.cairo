@@ -14,3 +14,11 @@ pub struct WalletAdded {
     pub wallet_address: felt252,
     pub timestamp: u64,
 }
+
+#[derive(Drop, starknet::Event)]
+pub struct WalletRemoved {
+    pub user_address: ContractAddress,
+    pub username: ByteArray,
+    pub chain_id: felt252,
+    pub timestamp: u64,
+}

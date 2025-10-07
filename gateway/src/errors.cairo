@@ -6,4 +6,6 @@ pub mod Errors {
     pub const INVALID_CHAIN_ID: felt252 = 'INVALID_CHAIN_ID';
     pub const INVALID_WALLET_ADDRESS: felt252 = 'INVALID_WALLET_ADDRESS';
     pub const USER_NOT_REGISTERED: felt252 = 'USER_NOT_REGISTERED';
+    pub const WALLET_NOT_FOUND: felt252 = 'WALLET_NOT_FOUND';
+    pub const CHAIN_ID_NOT_FOUND: felt252 = 'CHAIN_ID_NOT_FOUND';
 }
