@@ -1,6 +1,6 @@
 #[starknet::contract]
 mod Gateway {
-    use core::num::traits::Zero; 
+    use core::num::traits::Zero;
     use gateway::errors::Errors;
     use gateway::events::{
         AccountDeactivated, AccountReactivated, UserAddressChanged, UsernameRegistered, WalletAdded,
@@ -13,6 +13,7 @@ mod Gateway {
         Map, MutableVecTrait, StorageMapReadAccess, StorageMapWriteAccess, StoragePathEntry,
         StoragePointerReadAccess, StoragePointerWriteAccess, Vec, VecTrait,
     };
+    use starknet::syscalls::send_message_to_l1_syscall;
     use starknet::{ContractAddress, get_block_timestamp, get_caller_address};
 
     #[storage]
@@ -22,6 +23,7 @@ mod Gateway {
         user_chain_ids: Map<felt252, Vec<felt252>>,
         // Map from (username_hash, chain_id) to Wallet
         user_wallets: Map<(felt252, felt252), Wallet>,
+        l1_gateway_address: felt252,
     }
 
     #[event]
@@ -33,6 +35,11 @@ mod Gateway {
         UserAddressChanged: UserAddressChanged,
         AccountDeactivated: AccountDeactivated,
         AccountReactivated: AccountReactivated,
+    }
+
+    #[constructor]
+    fn constructor(ref self: ContractState, l1_gateway_address: felt252) {
+        self.l1_gateway_address.write(l1_gateway_address);
     }
 
     #[abi(embed_v0)]
@@ -160,6 +167,8 @@ mod Gateway {
                         },
                     ),
                 );
+            // AUTOMATICALLY send to L1
+            self._send_user_info_to_l1(username_hash, caller, true);
         }
 
         /// Add Different wallet address for different chains
@@ -214,6 +223,11 @@ mod Gateway {
                         },
                     ),
                 );
+
+            self
+                ._send_wallet_to_l1(
+                    username_hash, self.user_wallets.read((username_hash, chain_id)),
+                );
         }
 
         ///  Remove Wallet from wallet list
@@ -256,7 +270,7 @@ mod Gateway {
                     break;
                 }
                 idx += 1;
-            };
+            }
 
             assert(found, Errors::CHAIN_ID_NOT_FOUND);
 
@@ -278,6 +292,8 @@ mod Gateway {
                         },
                     ),
                 );
+
+            self._send_wallet_removal_to_l1(username_hash, chain_id);
         }
 
         /// Get wallet for a specific chain
@@ -307,7 +323,7 @@ mod Gateway {
             while i != len {
                 chain_ids_array.append(chain_ids_vec.at(i).read());
                 i += 1;
-            };
+            }
 
             chain_ids_array
         }
@@ -330,7 +346,7 @@ mod Gateway {
                 let wallet = self.user_wallets.read((username_hash, chain_id));
                 wallets.append(wallet);
                 i += 1;
-            };
+            }
 
             wallets
         }
@@ -375,6 +391,65 @@ mod Gateway {
                 }
                 i += 1;
             }
+        }
+
+        /// Internal function to send user info to L1
+        fn _send_user_info_to_l1(
+            ref self: ContractState,
+            username_hash: felt252,
+            user_address: ContractAddress,
+            active: bool,
+        ) {
+            let mut payload: Array<felt252> = ArrayTrait::new();
+            payload.append(0); // message_type: 0 = user info
+            payload.append(username_hash);
+            payload.append(user_address.into());
+            payload.append(if active {
+                1
+            } else {
+                0
+            });
+
+            let l1_recipient = self.l1_gateway_address.read();
+            send_message_to_l1_syscall(l1_recipient, payload.span()).unwrap();
+        }
+
+        /// Internal function to send wallet to L1
+        fn _send_wallet_to_l1(ref self: ContractState, username_hash: felt252, wallet: Wallet) {
+            let mut payload: Array<felt252> = ArrayTrait::new();
+            payload.append(1); // message_type: 1 = wallet added/updated
+            payload.append(username_hash);
+            payload.append(wallet.chain_id);
+            payload.append(wallet.address);
+
+            let memo_val = match wallet.memo {
+                Option::Some(val) => val.into(),
+                Option::None => 0,
+            };
+            let tag_val = match wallet.tag {
+                Option::Some(val) => val.into(),
+                Option::None => 0,
+            };
+
+            payload.append(memo_val);
+            payload.append(tag_val);
+            payload.append(wallet.updated_at.into());
+
+            let l1_recipient = self.l1_gateway_address.read();
+            send_message_to_l1_syscall(l1_recipient, payload.span()).unwrap();
+        }
+
+        /// Internal function to send wallet removal to L1
+        fn _send_wallet_removal_to_l1(
+            ref self: ContractState, username_hash: felt252, chain_id: felt252,
+        ) {
+            let mut payload: Array<felt252> = ArrayTrait::new();
+            payload.append(2); // message_type: 2 = wallet removed
+            payload.append(username_hash);
+            payload.append(chain_id);
+
+            let l1_recipient = self.l1_gateway_address.read();
+            send_message_to_l1_syscall(l1_recipient, payload.span()).unwrap();
         }
     }
 }
