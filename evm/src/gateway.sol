@@ -17,6 +17,7 @@ contract Gateway {
     uint256 public immutable L2_GATEWAY_ADDRESS;
 
     struct UserInfo {
+        string username;
         bytes32 usernameHash;
         address userAddress;
         bool active;
@@ -32,11 +33,13 @@ contract Gateway {
 
     // Storage
     mapping(bytes32 => UserInfo) public userInfos;
+    mapping(string => bytes32) public usernameToHash;
     mapping(bytes32 => uint256[]) public userChainIds;
     mapping(bytes32 => mapping(uint256 => Wallet)) public userWallets;
 
     // Events
     event UserInfoSynced(
+        string indexed username,
         bytes32 indexed usernameHash, 
         address userAddress, 
         bool active,
@@ -44,6 +47,7 @@ contract Gateway {
     );
     
     event WalletSynced(
+        string indexed username,
         bytes32 indexed usernameHash, 
         uint256 chainId, 
         uint256 addressOnChain,
@@ -52,6 +56,7 @@ contract Gateway {
     );
 
     event WalletRemoved(
+        string indexed username,
         bytes32 indexed usernameHash,
         uint256 chainId,
         uint256 timestamp
@@ -103,13 +108,17 @@ contract Gateway {
         address userAddr = address(uint160(payload[2]));
         bool active = payload[3] != 0;
 
+        // Get existing username if it exists, otherwise empty string
+        string memory username = userInfos[usernameHash].username;
+
         userInfos[usernameHash] = UserInfo({
+            username: username,
             usernameHash: usernameHash,
             userAddress: userAddr,
             active: active
         });
 
-        emit UserInfoSynced(usernameHash, userAddr, active, block.timestamp);
+        emit UserInfoSynced(username, usernameHash, userAddr, active, block.timestamp);
     }
 
     /**
@@ -139,7 +148,10 @@ contract Gateway {
             userChainIds[usernameHash].push(chainId);
         }
 
+        string memory username = userInfos[usernameHash].username;
+
         emit WalletSynced(
+            username,
             usernameHash, 
             chainId, 
             wallet.addressOnChain, 
@@ -172,10 +184,47 @@ contract Gateway {
             }
         }
 
-        emit WalletRemoved(usernameHash, chainId, block.timestamp);
+        string memory username = userInfos[usernameHash].username;
+
+        emit WalletRemoved(username, usernameHash, chainId, block.timestamp);
     }
 
-    // View functions
+    /**
+     * @notice Register username mapping (call this once after user registers on L2)
+     * @param username The human-readable username (e.g., "ryzen_xp")
+     * @param usernameHash The hash of the username from L2
+     */
+    function registerUsernameMapping(string calldata username, bytes32 usernameHash) external {
+        require(bytes(username).length > 0, "Empty username");
+        require(usernameHash != bytes32(0), "Invalid hash");
+        require(usernameToHash[username] == bytes32(0), "Username already mapped");
+
+        usernameToHash[username] = usernameHash;
+        
+        // Update the username in UserInfo if it exists
+        if (userInfos[usernameHash].userAddress != address(0)) {
+            userInfos[usernameHash].username = username;
+        }
+    }
+
+    // ========== VIEW FUNCTIONS WITH STRING USERNAME ==========
+
+    /**
+     * @notice Get user info by username string (e.g., "ryzen_xp")
+     */
+    function getUserInfoByUsername(string calldata username) 
+        external 
+        view 
+        returns (UserInfo memory) 
+    {
+        bytes32 usernameHash = usernameToHash[username];
+        require(usernameHash != bytes32(0), "Username not found");
+        return userInfos[usernameHash];
+    }
+
+    /**
+     * @notice Get user info by username hash
+     */
     function getUserInfo(bytes32 usernameHash) 
         external 
         view 
@@ -184,6 +233,22 @@ contract Gateway {
         return userInfos[usernameHash];
     }
 
+    /**
+     * @notice Get wallet by username string and chain ID
+     */
+    function getWalletByUsername(string calldata username, uint256 chainId) 
+        external 
+        view 
+        returns (Wallet memory) 
+    {
+        bytes32 usernameHash = usernameToHash[username];
+        require(usernameHash != bytes32(0), "Username not found");
+        return userWallets[usernameHash][chainId];
+    }
+
+    /**
+     * @notice Get wallet by username hash and chain ID
+     */
     function getWallet(bytes32 usernameHash, uint256 chainId) 
         external 
         view 
@@ -192,6 +257,22 @@ contract Gateway {
         return userWallets[usernameHash][chainId];
     }
 
+    /**
+     * @notice Get all chain IDs for a username string
+     */
+    function getUserChainIdsByUsername(string calldata username) 
+        external 
+        view 
+        returns (uint256[] memory) 
+    {
+        bytes32 usernameHash = usernameToHash[username];
+        require(usernameHash != bytes32(0), "Username not found");
+        return userChainIds[usernameHash];
+    }
+
+    /**
+     * @notice Get all chain IDs for a username hash
+     */
     function getUserChainIds(bytes32 usernameHash) 
         external 
         view 
@@ -200,6 +281,28 @@ contract Gateway {
         return userChainIds[usernameHash];
     }
 
+    /**
+     * @notice Get all wallets for a username string
+     */
+    function getAllUserWalletsByUsername(string calldata username) 
+        external 
+        view 
+        returns (Wallet[] memory wallets) 
+    {
+        bytes32 usernameHash = usernameToHash[username];
+        require(usernameHash != bytes32(0), "Username not found");
+        
+        uint256[] memory chains = userChainIds[usernameHash];
+        wallets = new Wallet[](chains.length);
+        
+        for (uint256 i = 0; i < chains.length; i++) {
+            wallets[i] = userWallets[usernameHash][chains[i]];
+        }
+    }
+
+    /**
+     * @notice Get all wallets for a username hash
+     */
     function getAllUserWallets(bytes32 usernameHash) 
         external 
         view 
@@ -213,12 +316,39 @@ contract Gateway {
         }
     }
 
+    /**
+     * @notice Check if user is active by username string
+     */
+    function isUserActiveByUsername(string calldata username) 
+        external 
+        view 
+        returns (bool) 
+    {
+        bytes32 usernameHash = usernameToHash[username];
+        require(usernameHash != bytes32(0), "Username not found");
+        return userInfos[usernameHash].active;
+    }
+
+    /**
+     * @notice Check if user is active by username hash
+     */
     function isUserActive(bytes32 usernameHash) 
         external 
         view 
         returns (bool) 
     {
         return userInfos[usernameHash].active;
+    }
+
+    /**
+     * @notice Get username hash from string
+     */
+    function getUsernameHash(string calldata username) 
+        external 
+        view 
+        returns (bytes32) 
+    {
+        return usernameToHash[username];
     }
 
     // Internal helper

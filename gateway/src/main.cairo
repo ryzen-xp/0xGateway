@@ -37,13 +37,13 @@ mod Gateway {
         AccountReactivated: AccountReactivated,
     }
 
-    #[constructor]
-    fn constructor(ref self: ContractState, l1_gateway_address: felt252) {
-        self.l1_gateway_address.write(l1_gateway_address);
-    }
 
     #[abi(embed_v0)]
     impl GatewayImpl of IGateway<ContractState> {
+        fn l1_address_set(ref self: ContractState, l1_gateway_address: felt252) {
+            self.l1_gateway_address.write(l1_gateway_address);
+        }
+
         /// Change user address - transfers username to a new address
         fn change_user_address(ref self: ContractState, new_address: ContractAddress) {
             assert(new_address.is_non_zero(), Errors::INVALID_ADDRESS);

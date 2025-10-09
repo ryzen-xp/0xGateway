@@ -3,6 +3,7 @@ use starknet::ContractAddress;
 
 #[starknet::interface]
 pub trait IGateway<TContractState> {
+    fn l1_address_set(ref self: TContractState, l1_gateway_address: felt252);
     fn change_user_address(ref self: TContractState, new_address: ContractAddress);
     fn deactivate_account(ref self: TContractState);
     fn reactivate_account(ref self: TContractState);
