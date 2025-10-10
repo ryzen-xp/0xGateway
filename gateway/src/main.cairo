@@ -13,15 +13,15 @@ mod Gateway {
         Map, MutableVecTrait, StorageMapReadAccess, StorageMapWriteAccess, StoragePathEntry,
         StoragePointerReadAccess, StoragePointerWriteAccess, Vec, VecTrait,
     };
-    use starknet::syscalls::send_message_to_l1_syscall;
+    // use starknet::syscalls::send_message_to_l1_syscall;
     use starknet::{ContractAddress, get_block_timestamp, get_caller_address};
 
     #[storage]
     struct Storage {
         usernames: Map<felt252, UserInfo>,
         address_usernames: Map<ContractAddress, ByteArray>,
-        user_chain_ids: Map<felt252, Vec<felt252>>,
-        // Map from (username_hash, chain_id) to Wallet
+        user_chain_symbols: Map<felt252, Vec<felt252>>,
+        // Map from (username_hash, chain_symbol) to Wallet
         user_wallets: Map<(felt252, felt252), Wallet>,
         l1_gateway_address: felt252,
     }
@@ -168,19 +168,19 @@ mod Gateway {
                     ),
                 );
             // AUTOMATICALLY send to L1
-            self._send_user_info_to_l1(username_hash, caller, true);
+        // self._send_user_info_to_l1(username_hash, caller, true);
         }
 
         /// Add Different wallet address for different chains
         fn add_wallets(
             ref self: ContractState,
-            chain_id: felt252,
+            chain_symbol: felt252,
             wallet_address: felt252,
             memo: Option<u128>,
             tag: Option<u128>,
             metadata: Option<ByteArray>,
         ) {
-            assert(chain_id.is_non_zero(), Errors::INVALID_CHAIN_ID);
+            assert(chain_symbol.is_non_zero(), Errors::INVALID_chain_symbol);
             assert(wallet_address.is_non_zero(), Errors::INVALID_WALLET_ADDRESS);
 
             let caller = get_caller_address();
@@ -192,17 +192,17 @@ mod Gateway {
 
             let username_hash = hash_username(username);
 
-            // Check if this chain_id already exists for this user
-            let chain_exists = self._check_chain_exists(username_hash, chain_id);
+            // Check if this chain_symbol already exists for this user
+            let chain_exists = self._check_chain_exists(username_hash, chain_symbol);
 
             // If chain doesn't exist, add it to the Vec
             if !chain_exists {
-                let mut chain_ids = self.user_chain_ids.entry(username_hash);
-                chain_ids.append().write(chain_id);
+                let mut chain_symbols = self.user_chain_symbols.entry(username_hash);
+                chain_symbols.append().write(chain_symbol);
             }
 
             let new_wallet = Wallet {
-                chain_id,
+                chain_symbol,
                 address: wallet_address,
                 memo,
                 tag,
@@ -210,29 +210,28 @@ mod Gateway {
                 updated_at: get_block_timestamp(),
             };
 
-            self.user_wallets.write((username_hash, chain_id), new_wallet);
+            self.user_wallets.write((username_hash, chain_symbol), new_wallet);
 
             self
                 .emit(
                     Event::WalletAdded(
                         WalletAdded {
                             user_address: caller,
-                            chain_id,
+                            chain_symbol,
                             wallet_address,
                             timestamp: get_block_timestamp(),
                         },
                     ),
                 );
-
-            self
-                ._send_wallet_to_l1(
-                    username_hash, self.user_wallets.read((username_hash, chain_id)),
-                );
+            // self
+        //     ._send_wallet_to_l1(
+        //         username_hash, self.user_wallets.read((username_hash, chain_symbol)),
+        //     );
         }
 
         ///  Remove Wallet from wallet list
-        fn remove_wallet(ref self: ContractState, chain_id: felt252) {
-            assert(chain_id.is_non_zero(), Errors::INVALID_CHAIN_ID);
+        fn remove_wallet(ref self: ContractState, chain_symbol: felt252) {
+            assert(chain_symbol.is_non_zero(), Errors::INVALID_chain_symbol);
 
             let caller = get_caller_address();
             let username = self.get_username(caller);
@@ -245,41 +244,41 @@ mod Gateway {
             let username_hash = hash_username(username.clone());
 
             // Verify the wallet exists for this chain
-            let wallet = self.user_wallets.read((username_hash, chain_id));
+            let wallet = self.user_wallets.read((username_hash, chain_symbol));
             assert(wallet.address.is_non_zero(), Errors::WALLET_NOT_FOUND);
 
             let empty_wallet = Wallet {
-                chain_id: 0,
+                chain_symbol: 0,
                 address: 0,
                 memo: Option::None,
                 tag: Option::None,
                 metadata: Option::None,
                 updated_at: 0,
             };
-            self.user_wallets.write((username_hash, chain_id), empty_wallet);
+            self.user_wallets.write((username_hash, chain_symbol), empty_wallet);
 
-            // Remove chain_id from the Vec
-            let mut chain_ids_vec = self.user_chain_ids.entry(username_hash);
-            let len = chain_ids_vec.len();
+            // Remove chain_symbol from the Vec
+            let mut chain_symbols_vec = self.user_chain_symbols.entry(username_hash);
+            let len = chain_symbols_vec.len();
 
             let mut idx: u64 = 0;
             let mut found = false;
             while idx != len {
-                if chain_ids_vec.at(idx).read() == chain_id {
+                if chain_symbols_vec.at(idx).read() == chain_symbol {
                     found = true;
                     break;
                 }
                 idx += 1;
             }
 
-            assert(found, Errors::CHAIN_ID_NOT_FOUND);
+            assert(found, Errors::chain_symbol_NOT_FOUND);
 
             if idx != len - 1 {
-                let last_chain = chain_ids_vec.at(len - 1).read();
-                chain_ids_vec.at(idx).write(last_chain);
+                let last_chain = chain_symbols_vec.at(len - 1).read();
+                chain_symbols_vec.at(idx).write(last_chain);
             }
 
-            chain_ids_vec.pop().unwrap();
+            chain_symbols_vec.pop().unwrap();
 
             self
                 .emit(
@@ -287,45 +286,44 @@ mod Gateway {
                         WalletRemoved {
                             user_address: caller,
                             username,
-                            chain_id,
+                            chain_symbol,
                             timestamp: get_block_timestamp(),
                         },
                     ),
                 );
-
-            self._send_wallet_removal_to_l1(username_hash, chain_id);
+            // self._send_wallet_removal_to_l1(username_hash, chain_symbol);
         }
 
         /// Get wallet for a specific chain
-        fn get_wallet(self: @ContractState, username: ByteArray, chain_id: felt252) -> Wallet {
+        fn get_wallet(self: @ContractState, username: ByteArray, chain_symbol: felt252) -> Wallet {
             assert(username.len() != 0, Errors::INVALID_USERNAME);
-            assert(chain_id.is_non_zero(), Errors::INVALID_CHAIN_ID);
+            assert(chain_symbol.is_non_zero(), Errors::INVALID_chain_symbol);
 
             assert(self.is_account_active(username.clone()), Errors::ACCOUNT_INACTIVE);
 
             let username_hash = hash_username(username);
-            self.user_wallets.read((username_hash, chain_id))
+            self.user_wallets.read((username_hash, chain_symbol))
         }
 
         /// Get all chain IDs for a user
-        fn get_user_chain_ids(self: @ContractState, username: ByteArray) -> Array<felt252> {
+        fn get_user_chain_symbols(self: @ContractState, username: ByteArray) -> Array<felt252> {
             assert(username.len() != 0, Errors::INVALID_USERNAME);
 
             assert(self.is_account_active(username.clone()), Errors::ACCOUNT_INACTIVE);
 
             let username_hash = hash_username(username);
-            let chain_ids_vec = self.user_chain_ids.entry(username_hash);
+            let chain_symbols_vec = self.user_chain_symbols.entry(username_hash);
 
-            let mut chain_ids_array = ArrayTrait::new();
-            let len = chain_ids_vec.len();
+            let mut chain_symbols_array = ArrayTrait::new();
+            let len = chain_symbols_vec.len();
 
             let mut i: u64 = 0;
             while i != len {
-                chain_ids_array.append(chain_ids_vec.at(i).read());
+                chain_symbols_array.append(chain_symbols_vec.at(i).read());
                 i += 1;
             }
 
-            chain_ids_array
+            chain_symbols_array
         }
 
         /// Get all wallets for a user
@@ -335,15 +333,15 @@ mod Gateway {
             assert(self.is_account_active(username.clone()), Errors::ACCOUNT_INACTIVE);
 
             let username_hash = hash_username(username);
-            let chain_ids_vec = self.user_chain_ids.entry(username_hash);
+            let chain_symbols_vec = self.user_chain_symbols.entry(username_hash);
 
             let mut wallets = ArrayTrait::new();
-            let len = chain_ids_vec.len();
+            let len = chain_symbols_vec.len();
 
             let mut i: u64 = 0;
             while i != len {
-                let chain_id = chain_ids_vec.at(i).read();
-                let wallet = self.user_wallets.read((username_hash, chain_id));
+                let chain_symbol = chain_symbols_vec.at(i).read();
+                let wallet = self.user_wallets.read((username_hash, chain_symbol));
                 wallets.append(wallet);
                 i += 1;
             }
@@ -376,80 +374,79 @@ mod Gateway {
     #[generate_trait]
     impl InternalFunctions of InternalFunctionsTrait {
         fn _check_chain_exists(
-            self: @ContractState, username_hash: felt252, chain_id: felt252,
+            self: @ContractState, username_hash: felt252, chain_symbol: felt252,
         ) -> bool {
-            let chain_ids = self.user_chain_ids.entry(username_hash);
-            let len = chain_ids.len();
+            let chain_symbols = self.user_chain_symbols.entry(username_hash);
+            let len = chain_symbols.len();
 
             let mut i: u64 = 0;
             loop {
                 if i >= len {
                     break false;
                 }
-                if chain_ids.at(i).read() == chain_id {
+                if chain_symbols.at(i).read() == chain_symbol {
                     break true;
                 }
                 i += 1;
             }
         }
-
         /// Internal function to send user info to L1
-        fn _send_user_info_to_l1(
-            ref self: ContractState,
-            username_hash: felt252,
-            user_address: ContractAddress,
-            active: bool,
-        ) {
-            let mut payload: Array<felt252> = ArrayTrait::new();
-            payload.append(0); // message_type: 0 = user info
-            payload.append(username_hash);
-            payload.append(user_address.into());
-            payload.append(if active {
-                1
-            } else {
-                0
-            });
+    // fn _send_user_info_to_l1(
+    //     ref self: ContractState,
+    //     username_hash: felt252,
+    //     user_address: ContractAddress,
+    //     active: bool,
+    // ) {
+    //     let mut payload: Array<felt252> = ArrayTrait::new();
+    //     payload.append(0); // message_type: 0 = user info
+    //     payload.append(username_hash);
+    //     payload.append(user_address.into());
+    //     payload.append(if active {
+    //         1
+    //     } else {
+    //         0
+    //     });
 
-            let l1_recipient = self.l1_gateway_address.read();
-            send_message_to_l1_syscall(l1_recipient, payload.span()).unwrap();
-        }
+        //     let l1_recipient = self.l1_gateway_address.read();
+    //     send_message_to_l1_syscall(l1_recipient, payload.span()).unwrap();
+    // }
 
-        /// Internal function to send wallet to L1
-        fn _send_wallet_to_l1(ref self: ContractState, username_hash: felt252, wallet: Wallet) {
-            let mut payload: Array<felt252> = ArrayTrait::new();
-            payload.append(1); // message_type: 1 = wallet added/updated
-            payload.append(username_hash);
-            payload.append(wallet.chain_id);
-            payload.append(wallet.address);
+        // /// Internal function to send wallet to L1
+    // fn _send_wallet_to_l1(ref self: ContractState, username_hash: felt252, wallet: Wallet) {
+    //     let mut payload: Array<felt252> = ArrayTrait::new();
+    //     payload.append(1); // message_type: 1 = wallet added/updated
+    //     payload.append(username_hash);
+    //     payload.append(wallet.chain_symbol);
+    //     payload.append(wallet.address);
 
-            let memo_val = match wallet.memo {
-                Option::Some(val) => val.into(),
-                Option::None => 0,
-            };
-            let tag_val = match wallet.tag {
-                Option::Some(val) => val.into(),
-                Option::None => 0,
-            };
+        //     let memo_val = match wallet.memo {
+    //         Option::Some(val) => val.into(),
+    //         Option::None => 0,
+    //     };
+    //     let tag_val = match wallet.tag {
+    //         Option::Some(val) => val.into(),
+    //         Option::None => 0,
+    //     };
 
-            payload.append(memo_val);
-            payload.append(tag_val);
-            payload.append(wallet.updated_at.into());
+        //     payload.append(memo_val);
+    //     payload.append(tag_val);
+    //     payload.append(wallet.updated_at.into());
 
-            let l1_recipient = self.l1_gateway_address.read();
-            send_message_to_l1_syscall(l1_recipient, payload.span()).unwrap();
-        }
+        //     let l1_recipient = self.l1_gateway_address.read();
+    //     send_message_to_l1_syscall(l1_recipient, payload.span()).unwrap();
+    // }
 
-        /// Internal function to send wallet removal to L1
-        fn _send_wallet_removal_to_l1(
-            ref self: ContractState, username_hash: felt252, chain_id: felt252,
-        ) {
-            let mut payload: Array<felt252> = ArrayTrait::new();
-            payload.append(2); // message_type: 2 = wallet removed
-            payload.append(username_hash);
-            payload.append(chain_id);
+        // /// Internal function to send wallet removal to L1
+    // fn _send_wallet_removal_to_l1(
+    //     ref self: ContractState, username_hash: felt252, chain_symbol: felt252,
+    // ) {
+    //     let mut payload: Array<felt252> = ArrayTrait::new();
+    //     payload.append(2); // message_type: 2 = wallet removed
+    //     payload.append(username_hash);
+    //     payload.append(chain_symbol);
 
-            let l1_recipient = self.l1_gateway_address.read();
-            send_message_to_l1_syscall(l1_recipient, payload.span()).unwrap();
-        }
+        //     let l1_recipient = self.l1_gateway_address.read();
+    //     send_message_to_l1_syscall(l1_recipient, payload.span()).unwrap();
+    // }
     }
 }

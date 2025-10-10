@@ -11,7 +11,7 @@ pub struct UserInfo {
 // Store wallet info per chain
 #[derive(Drop, Serde, starknet::Store, Debug)]
 pub struct Wallet {
-    pub chain_id: felt252,
+    pub chain_symbol: felt252,
     pub address: felt252,
     pub memo: Option<u128>,
     pub tag: Option<u128>,

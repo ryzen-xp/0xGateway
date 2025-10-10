@@ -80,12 +80,12 @@ fn test_add_wallet_pass() {
     let username: ByteArray = "ryzen_xp";
     dispatcher.register_username(username.clone());
 
-    let chain_id: felt252 = 1;
+    let chain_symbol: felt252 = 1;
     let wallet_address: felt252 = 0x123456;
 
     let mut spy = spy_events();
 
-    dispatcher.add_wallets(chain_id, wallet_address, Option::None, Option::None, Option::None);
+    dispatcher.add_wallets(chain_symbol, wallet_address, Option::None, Option::None, Option::None);
 
     let events = spy.get_events();
     assert(events.events.len() == 1, 'Should emit 1 event');
@@ -97,25 +97,25 @@ fn test_add_wallet_without_registration() {
     let contract_address = deploy_contract();
     let dispatcher = IGatewayDispatcher { contract_address };
 
-    let chain_id: felt252 = 1;
+    let chain_symbol: felt252 = 1;
     let wallet_address: felt252 = 0x123456;
 
-    dispatcher.add_wallets(chain_id, wallet_address, Option::None, Option::None, Option::None);
+    dispatcher.add_wallets(chain_symbol, wallet_address, Option::None, Option::None, Option::None);
 }
 
 #[test]
-#[should_panic(expected: ('INVALID_CHAIN_ID',))]
-fn test_add_wallet_invalid_chain_id() {
+#[should_panic(expected: ('INVALID_chain_symbol',))]
+fn test_add_wallet_invalid_chain_symbol() {
     let contract_address = deploy_contract();
     let dispatcher = IGatewayDispatcher { contract_address };
 
     let username: ByteArray = "ryzen_xp";
     dispatcher.register_username(username);
 
-    let chain_id: felt252 = 0;
+    let chain_symbol: felt252 = 0;
     let wallet_address: felt252 = 0x123456;
 
-    dispatcher.add_wallets(chain_id, wallet_address, Option::None, Option::None, Option::None);
+    dispatcher.add_wallets(chain_symbol, wallet_address, Option::None, Option::None, Option::None);
 }
 
 #[test]
@@ -127,10 +127,10 @@ fn test_add_wallet_invalid_address() {
     let username: ByteArray = "ryzen_xp";
     dispatcher.register_username(username);
 
-    let chain_id: felt252 = 1;
+    let chain_symbol: felt252 = 1;
     let wallet_address: felt252 = 0;
 
-    dispatcher.add_wallets(chain_id, wallet_address, Option::None, Option::None, Option::None);
+    dispatcher.add_wallets(chain_symbol, wallet_address, Option::None, Option::None, Option::None);
 }
 
 #[test]
@@ -145,8 +145,8 @@ fn test_add_multiple_wallets() {
     dispatcher.add_wallets('ETH', 0x222, Option::None, Option::None, Option::None);
     dispatcher.add_wallets('BNB', 0x333, Option::None, Option::None, Option::None);
 
-    let chain_ids = dispatcher.get_user_chain_ids(username);
-    assert(chain_ids.len() == 3, 'Should have 3 chain IDs');
+    let chain_symbols = dispatcher.get_user_chain_symbols(username);
+    assert(chain_symbols.len() == 3, 'Should have 3 chain IDs');
 }
 
 // ==================== REMOVE WALLET TESTS ====================
@@ -159,20 +159,20 @@ fn test_remove_wallet_pass() {
     let username: ByteArray = "ryzen_xp";
     dispatcher.register_username(username.clone());
 
-    let chain_id: felt252 = 1;
+    let chain_symbol: felt252 = 1;
     let wallet_address: felt252 = 0x123456;
 
-    dispatcher.add_wallets(chain_id, wallet_address, Option::None, Option::None, Option::None);
+    dispatcher.add_wallets(chain_symbol, wallet_address, Option::None, Option::None, Option::None);
 
     let mut spy = spy_events();
 
-    dispatcher.remove_wallet(chain_id);
+    dispatcher.remove_wallet(chain_symbol);
 
     let events = spy.get_events();
     assert(events.events.len() == 1, 'Should emit 1 event');
 
-    let chain_ids = dispatcher.get_user_chain_ids(username);
-    assert(chain_ids.len() == 0, 'Should have 0 chain IDs');
+    let chain_symbols = dispatcher.get_user_chain_symbols(username);
+    assert(chain_symbols.len() == 0, 'Should have 0 chain IDs');
 }
 
 #[test]
@@ -181,8 +181,8 @@ fn test_remove_wallet_not_registered() {
     let contract_address = deploy_contract();
     let dispatcher = IGatewayDispatcher { contract_address };
 
-    let chain_id: felt252 = 1;
-    dispatcher.remove_wallet(chain_id);
+    let chain_symbol: felt252 = 1;
+    dispatcher.remove_wallet(chain_symbol);
 }
 
 #[test]
@@ -194,12 +194,12 @@ fn test_remove_wallet_not_exist() {
     let username: ByteArray = "ryzen_xp";
     dispatcher.register_username(username);
 
-    let chain_id: felt252 = 1;
-    dispatcher.remove_wallet(chain_id);
+    let chain_symbol: felt252 = 1;
+    dispatcher.remove_wallet(chain_symbol);
 }
 
 #[test]
-#[should_panic(expected: ('INVALID_CHAIN_ID',))]
+#[should_panic(expected: ('INVALID_chain_symbol',))]
 fn test_remove_wallet_invalid_chain() {
     let contract_address = deploy_contract();
     let dispatcher = IGatewayDispatcher { contract_address };
@@ -224,8 +224,8 @@ fn test_remove_wallet_from_multiple() {
 
     dispatcher.remove_wallet(2);
 
-    let chain_ids = dispatcher.get_user_chain_ids(username);
-    assert(chain_ids.len() == 2, 'Should have 2 chain IDs');
+    let chain_symbols = dispatcher.get_user_chain_symbols(username);
+    assert(chain_symbols.len() == 2, 'Should have 2 chain IDs');
 }
 
 // ==================== GET WALLET TESTS ====================
@@ -238,14 +238,14 @@ fn test_get_wallet_pass() {
     let username: ByteArray = "ryzen_xp";
     dispatcher.register_username(username.clone());
 
-    let chain_id: felt252 = 1;
+    let chain_symbol: felt252 = 1;
     let wallet_address: felt252 = 0x123456;
 
-    dispatcher.add_wallets(chain_id, wallet_address, Option::None, Option::None, Option::None);
+    dispatcher.add_wallets(chain_symbol, wallet_address, Option::None, Option::None, Option::None);
 
-    let wallet = dispatcher.get_wallet(username, chain_id);
+    let wallet = dispatcher.get_wallet(username, chain_symbol);
     assert(wallet.address == wallet_address, 'Wallet address mismatch');
-    assert(wallet.chain_id == chain_id, 'Chain ID mismatch');
+    assert(wallet.chain_symbol == chain_symbol, 'Chain ID mismatch');
 }
 
 #[test]
@@ -259,7 +259,7 @@ fn test_get_wallet_invalid_username() {
 }
 
 #[test]
-#[should_panic(expected: ('INVALID_CHAIN_ID',))]
+#[should_panic(expected: ('INVALID_chain_symbol',))]
 fn test_get_wallet_invalid_chain() {
     let contract_address = deploy_contract();
     let dispatcher = IGatewayDispatcher { contract_address };
