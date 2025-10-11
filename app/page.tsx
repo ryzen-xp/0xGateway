@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { Navbar } from "./components/Navbar";
 import { HomePage } from "./components/HomePage";
 import { DashboardPage } from "./components/DashboardPage";
-import { mockUser, User } from "./data/mockUser";
+import { mockUser, User } from "../gateway-web/src/components/data/mockUser";
 
 export default function App() {
   const [isConnected, setIsConnected] = useState(false);
@@ -48,7 +48,8 @@ export default function App() {
       </main>
 
       <footer className="text-center text-gray-500 py-6 border-t border-white/10 mt-12">
-        © {new Date().getFullYear()} Starknet Gateway · Built with ❤️ by Sandeep
+        © {new Date().getFullYear()} Starknet Gateway · Built with ❤️ by
+        ryzen_xp
       </footer>
     </div>
   );

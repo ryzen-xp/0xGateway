@@ -1,13 +1,13 @@
 "use client";
 import React from "react";
 import { Globe, Home, Settings, LogOut, User } from "lucide-react";
-import { User as UserType } from "../data/mockUser";
+import { User as UserType } from "../../gateway-web/src/components/data/mockUser";
 
 interface NavbarProps {
   isConnected: boolean;
   user: UserType | null;
   currentPage: string;
-  setCurrentPage: (page: string) => void;
+  setCurrentPage: (page: "home" | "dashboard") => void;
   onConnect: () => void;
   onDisconnect: () => void;
 }
