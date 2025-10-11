@@ -1,8 +1,8 @@
 "use client";
 import React, { useState } from "react";
-import { Navbar } from "./components/Navbar";
-import { HomePage } from "./components/HomePage";
-import { DashboardPage } from "./components/DashboardPage";
+import { Navbar } from "../gateway-web/app/components/Navbar";
+import { HomePage } from "../gateway-web/app/components/HomePage";
+import { DashboardPage } from "../gateway-web/app/components/DashboardPage";
 import { mockUser, User } from "../gateway-web/src/components/data/mockUser";
 
 export default function App() {

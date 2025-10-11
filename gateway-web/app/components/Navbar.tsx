@@ -1,7 +1,7 @@
 "use client";
 import React from "react";
 import { Globe, Home, Settings, LogOut, User } from "lucide-react";
-import { User as UserType } from "../../gateway-web/src/components/data/mockUser";
+import { User as UserType } from "../data/mockUser";
 
 interface NavbarProps {
   isConnected: boolean;
@@ -28,7 +28,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <Globe className="w-6 h-6 text-white" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-white">Starknet Gateway</h1>
+            <h1 className="text-xl font-bold text-white">0xGateway</h1>
             <p className="text-xs text-purple-300">Universal Username System</p>
           </div>
         </div>

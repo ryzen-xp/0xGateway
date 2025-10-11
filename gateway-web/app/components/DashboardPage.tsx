@@ -9,8 +9,8 @@ import {
   Network,
   Globe,
 } from "lucide-react";
-import { User } from "../../gateway-web/src/components/data/mockUser";
-import { chainOptions } from "../../gateway-web/src/components/data/chainOptions";
+import { User } from "../data/mockUser";
+import { chainOptions } from "../data/chainOptions";
 
 interface DashboardPageProps {
   user: User;
