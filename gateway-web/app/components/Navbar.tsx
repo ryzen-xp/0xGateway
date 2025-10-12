@@ -1,28 +1,31 @@
 "use client";
 import React from "react";
-import { Globe, Home, Settings, LogOut, User } from "lucide-react";
-import { User as UserType } from "../data/mockUser";
+import { Globe, Home, Settings, LogOut, User, Wallet } from "lucide-react";
+import { useStarknetWallet } from "../hooks/useStarknetWallet";
 
 interface NavbarProps {
-  isConnected: boolean;
-  user: UserType | null;
-  currentPage: string;
+  currentPage: "home" | "dashboard";
   setCurrentPage: (page: "home" | "dashboard") => void;
-  onConnect: () => void;
-  onDisconnect: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
-  isConnected,
-  user,
   currentPage,
   setCurrentPage,
-  onConnect,
-  onDisconnect,
 }) => {
+  const {
+    isConnected,
+    username,
+    formattedAddress,
+    handleConnect,
+    handleDisconnect,
+  } = useStarknetWallet();
+
+  const isRegistered = username && username !== "";
+
   return (
     <nav className="bg-black/30 backdrop-blur-xl border-b border-white/10">
       <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+        {/* Logo */}
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
             <Globe className="w-6 h-6 text-white" />
@@ -33,46 +36,73 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
         </div>
 
+        {/* Navigation & Wallet */}
         <div className="flex items-center gap-4">
           {isConnected ? (
             <>
               <button
                 onClick={() => setCurrentPage("home")}
-                className={`px-4 py-2 rounded-lg transition-all ${
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
                   currentPage === "home"
                     ? "bg-purple-600 text-white"
                     : "text-gray-300 hover:bg-white/5"
                 }`}
               >
                 <Home className="w-5 h-5" />
+                <span className="hidden md:inline">Home</span>
               </button>
-              <button
-                onClick={() => setCurrentPage("dashboard")}
-                className={`px-4 py-2 rounded-lg transition-all ${
-                  currentPage === "dashboard"
-                    ? "bg-purple-600 text-white"
-                    : "text-gray-300 hover:bg-white/5"
-                }`}
-              >
-                <Settings className="w-5 h-5" />
-              </button>
+
+              {isRegistered && (
+                <button
+                  onClick={() => setCurrentPage("dashboard")}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
+                    currentPage === "dashboard"
+                      ? "bg-purple-600 text-white"
+                      : "text-gray-300 hover:bg-white/5"
+                  }`}
+                >
+                  <Settings className="w-5 h-5" />
+                  <span className="hidden md:inline">Dashboard</span>
+                </button>
+              )}
+              {/* User Info */}
               <div className="flex items-center gap-3 px-4 py-2 bg-white/5 rounded-lg border border-white/10">
-                <User className="w-5 h-5 text-purple-400" />
-                <span className="text-white font-medium">{user?.username}</span>
+                {username ? (
+                  <>
+                    <User className="w-5 h-5 text-purple-400" />
+                    <div className="flex flex-col">
+                      <span className="text-white font-medium text-sm">
+                        @{username}
+                      </span>
+                      <span className="text-gray-400 text-xs">
+                        {formattedAddress}
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <Wallet className="w-5 h-5 text-purple-400" />
+                    <span className="text-white font-medium text-sm">
+                      {formattedAddress}
+                    </span>
+                  </>
+                )}
               </div>
+
               <button
-                onClick={onDisconnect}
-                className="px-4 py-2 bg-red-600/20 hover:bg-red-600/30 text-red-400 rounded-lg transition-all flex items-center gap-2"
+                onClick={handleDisconnect}
+                className="px-4 py-2 bg-red-600/20 hover:bg-red-600/30 text-red-400 rounded-lg transition-all flex items-center gap-2 border border-red-500/20"
               >
                 <LogOut className="w-4 h-4" />
-                Disconnect
+                <span className="hidden md:inline">Disconnect</span>
               </button>
             </>
           ) : (
             <button
-              onClick={onConnect}
-              className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-semibold rounded-lg transition-all transform hover:scale-105 shadow-lg shadow-purple-500/50"
+              onClick={handleConnect}
+              className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-semibold rounded-lg transition-all transform hover:scale-105 shadow-lg shadow-purple-500/50 flex items-center gap-2"
             >
+              <Wallet className="w-5 h-5" />
               Connect Wallet
             </button>
           )}
