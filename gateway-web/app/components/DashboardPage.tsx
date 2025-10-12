@@ -13,7 +13,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { chainOptions } from "../data/chainOptions";
-import { Wallet as WalletType } from "../data/types";
+import { Wallet, ContractWallet } from "../data/types";
 import { useStarknetWallet } from "../hooks/useStarknetWallet";
 import { useStarknetContract } from "../hooks/useStarknetContract";
 
@@ -21,14 +21,13 @@ interface DashboardPageProps {
   username: string;
 }
 
-type WalletUI = WalletType & {
+type WalletUI = Wallet & {
   chainName?: string;
 };
 
 export const DashboardPage: React.FC<DashboardPageProps> = ({ username }) => {
   const { account, isConnected } = useStarknetWallet();
-  const { getWalletsForUser, addWalletToUser, removeWalletFromUser } =
-    useStarknetContract();
+  const { getUserWallets, addWallet } = useStarknetContract();
 
   const [wallets, setWallets] = useState<WalletUI[]>([]);
   const [isLoadingWallets, setIsLoadingWallets] = useState<boolean>(true);
@@ -67,59 +66,21 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ username }) => {
       setError(null);
 
       try {
-        // TODO: Replace the following placeholder call with your contract read call.
-        // Example if your contract has `get_wallets(username)`:
-        // const raw = await getWalletsForUser(username);
-        //
-        // For now we handle two cases:
-        // - If getWalletsForUser exists, call it
-        // - If not, treat as no wallets (empty array)
-        let raw: any[] = [];
-        if (typeof getWalletsForUser === "function") {
-          raw = await getWalletsForUser(username);
-        } else {
-          // placeholder: empty result (no wallets)
-          raw = [];
-        }
+        // Fetch from contract
+        const raw: ContractWallet[] = await getUserWallets(username);
 
-        // raw is expected to be an array of on-chain wallet objects
-        // we normalize them to WalletUI
-        const formatted: WalletUI[] = (raw || []).map((w: any) => {
-          // fields depend on ABI; handle common cases robustly
-          const chainSymbol =
-            w.chain_symbol?.toString?.() ??
-            w.chainSymbol?.toString?.() ??
-            w.chain?.toString?.() ??
-            "";
-          const address = w.address?.toString?.() ?? w.addr?.toString?.() ?? "";
-          const memoRaw = w.memo ?? w.memo_u128 ?? null;
-          const tagRaw = w.tag ?? w.tag_u128 ?? null;
-          const metadataRaw =
-            w.metadata?.toString?.() ?? w.meta?.toString?.() ?? null;
-          const updatedAtRaw = w.updated_at ?? w.updatedAt ?? Date.now();
+        // Map to WalletUI
+        const formatted: WalletUI[] = raw.map((w) => ({
+          chainSymbol: w.chain_symbol,
+          address: w.address,
+          memo: w.memo ?? undefined,
+          tag: w.tag ?? undefined,
+          metadata: w.metadata ?? undefined,
+          updatedAt: w.updated_at,
+          chainName: getChainName(w.chain_symbol),
+        }));
 
-          const ui: WalletUI = {
-            chainSymbol: chainSymbol,
-            address: address,
-            memo:
-              memoRaw !== null && memoRaw !== undefined
-                ? Number(memoRaw)
-                : undefined,
-            tag:
-              tagRaw !== null && tagRaw !== undefined
-                ? Number(tagRaw)
-                : undefined,
-            metadata: metadataRaw ?? undefined,
-            updatedAt: Number(updatedAtRaw),
-            chainName: getChainName(chainSymbol),
-          };
-
-          return ui;
-        });
-
-        if (mounted) {
-          setWallets(formatted);
-        }
+        if (mounted) setWallets(formatted);
       } catch (err) {
         console.error("Failed to fetch wallets:", err);
         if (mounted) setError("Failed to fetch wallets. Please try again.");
@@ -129,11 +90,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ username }) => {
     };
 
     fetchWallets();
-
     return () => {
       mounted = false;
     };
-  }, [username, getWalletsForUser]);
+  }, [username, getUserWallets]);
 
   // Copy to clipboard
   const copyToClipboard = (text: string) => {
@@ -164,19 +124,17 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ username }) => {
     setError(null);
 
     try {
-      // TODO: Replace with actual contract write call using signer
-      // Example:
-      // const tx = await addWalletToUser({
-      //   owner: account,
-      //   chainSymbol: selected.symbol,
-      //   address,
-      //   memo: memo ? BigInt(memo) : undefined,
-      //   tag: tag ? BigInt(tag) : undefined,
-      //   metadata: metadata || undefined
-      // });
-      // await waitForTx(tx);
+      // Call contract to add wallet
+      await addWallet(
+        account,
+        selected.symbol,
+        address,
+        memo ? Number(memo) : undefined,
+        tag ? Number(tag) : undefined,
+        metadata || undefined
+      );
 
-      // For now update local state optimistically
+      // Update local state after successful transaction
       const newEntry: WalletUI = {
         chainSymbol: selected.symbol,
         address,
@@ -195,7 +153,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ username }) => {
         tag: "",
         metadata: "",
       });
-      alert("Wallet added (UI-only). Replace placeholder with on-chain call.");
+      alert("Wallet added successfully!");
     } catch (err) {
       console.error("Add wallet failed:", err);
       setError("Failed to add wallet. See console for details.");
