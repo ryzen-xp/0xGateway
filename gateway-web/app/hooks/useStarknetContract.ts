@@ -9,9 +9,12 @@ import {
 } from "starknet";
 import { ABI } from "./abi";
 
-const CONTRACT_ADDRESS =
-  "0x024f4b18be04f1be6a808baf4a472a7a2d4171d016c8349548e76fff2587f8cb";
-const RPC_URL = "https://starknet-sepolia.public.blastapi.io/rpc/v0_7";
+const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS;
+const RPC_URL = process.env.NEXT_PUBLIC_RPC_URL;
+
+if (!CONTRACT_ADDRESS)
+  throw new Error("NEXT_PUBLIC_CONTRACT_ADDRESS is not defined");
+if (!RPC_URL) throw new Error("NEXT_PUBLIC_RPC_URL is not defined");
 
 interface UserInfo {
   username: string;
