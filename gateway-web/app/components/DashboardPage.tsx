@@ -67,16 +67,14 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ username }) => {
       setError(null);
 
       try {
-        // Fetch from contract
         const raw: ContractWallet[] = await getUserWallets(username);
 
-        // Map to WalletUI
         const formatted: WalletUI[] = raw.map((w) => ({
           chainSymbol: w.chain_symbol,
           address: w.address,
-          memo: w.memo ?? undefined,
-          tag: w.tag ?? undefined,
-          metadata: w.metadata ?? undefined,
+          memo: w.memo,
+          tag: w.tag,
+          metadata: w.metadata,
           updatedAt: w.updated_at,
           chainName: getChainName(w.chain_symbol),
         }));
