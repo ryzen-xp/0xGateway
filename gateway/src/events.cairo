@@ -10,7 +10,7 @@ pub struct UsernameRegistered {
 #[derive(Drop, Serde, starknet::Event)]
 pub struct WalletAdded {
     pub user_address: ContractAddress,
-    pub chain_symbol: felt252,
+    pub chain_symbol: ByteArray,
     pub wallet_address: felt252,
     pub timestamp: u64,
 }
@@ -19,7 +19,7 @@ pub struct WalletAdded {
 pub struct WalletRemoved {
     pub user_address: ContractAddress,
     pub username: ByteArray,
-    pub chain_symbol: felt252,
+    pub chain_symbol: ByteArray,
     pub timestamp: u64,
 }
 

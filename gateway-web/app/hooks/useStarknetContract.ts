@@ -6,6 +6,7 @@ import {
   RpcProvider,
   AccountInterface,
   ProviderInterface,
+  CairoOption,
 } from "starknet";
 import { ABI } from "./abi";
 
@@ -206,7 +207,7 @@ export const useStarknetContract = () => {
   // Add wallet
   const addWallet = useCallback(
     async (
-      account: ProviderInterface | AccountInterface,
+      account: AccountInterface,
       chainSymbol: string,
       walletAddress: string,
       memo?: number,
@@ -221,10 +222,11 @@ export const useStarknetContract = () => {
         const result = await contract.add_wallets(
           chainSymbol,
           walletAddress,
-          memo ? { Some: memo } : { None: {} },
-          tag ? { Some: tag } : { None: {} },
-          metadata ? { Some: metadata } : { None: {} }
+          new CairoOption(memo !== undefined ? 0 : 1, memo),
+          new CairoOption(tag !== undefined ? 0 : 1, tag),
+          new CairoOption(metadata !== undefined ? 0 : 1, metadata)
         );
+
         await account.waitForTransaction(result.transaction_hash);
         return result;
       } catch (err) {

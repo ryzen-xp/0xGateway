@@ -13,17 +13,15 @@ mod Gateway {
         Map, MutableVecTrait, StorageMapReadAccess, StorageMapWriteAccess, StoragePathEntry,
         StoragePointerReadAccess, StoragePointerWriteAccess, Vec, VecTrait,
     };
-    // use starknet::syscalls::send_message_to_l1_syscall;
-    use starknet::{ContractAddress, get_block_timestamp, get_caller_address};
+       use starknet::{ContractAddress, get_block_timestamp, get_caller_address};
 
     #[storage]
     struct Storage {
         usernames: Map<felt252, UserInfo>,
         address_usernames: Map<ContractAddress, ByteArray>,
-        user_chain_symbols: Map<felt252, Vec<felt252>>,
+        user_chain_symbols: Map<felt252, Vec<ByteArray>>,
         // Map from (username_hash, chain_symbol) to Wallet
         user_wallets: Map<(felt252, felt252), Wallet>,
-        l1_gateway_address: felt252,
     }
 
     #[event]
@@ -40,10 +38,6 @@ mod Gateway {
 
     #[abi(embed_v0)]
     impl GatewayImpl of IGateway<ContractState> {
-        fn l1_address_set(ref self: ContractState, l1_gateway_address: felt252) {
-            self.l1_gateway_address.write(l1_gateway_address);
-        }
-
         /// Change user address - transfers username to a new address
         fn change_user_address(ref self: ContractState, new_address: ContractAddress) {
             assert(new_address.is_non_zero(), Errors::INVALID_ADDRESS);
@@ -174,13 +168,13 @@ mod Gateway {
         /// Add Different wallet address for different chains
         fn add_wallets(
             ref self: ContractState,
-            chain_symbol: felt252,
+            chain_symbol: ByteArray,
             wallet_address: felt252,
             memo: Option<u128>,
             tag: Option<u128>,
             metadata: Option<ByteArray>,
         ) {
-            assert(chain_symbol.is_non_zero(), Errors::INVALID_chain_symbol);
+            assert(chain_symbol.len() > 0, Errors::INVALID_chain_symbol);
             assert(wallet_address.is_non_zero(), Errors::INVALID_WALLET_ADDRESS);
 
             let caller = get_caller_address();
@@ -193,16 +187,16 @@ mod Gateway {
             let username_hash = hash_username(username);
 
             // Check if this chain_symbol already exists for this user
-            let chain_exists = self._check_chain_exists(username_hash, chain_symbol);
+            let chain_exists = self._check_chain_exists(username_hash, chain_symbol.clone());
 
             // If chain doesn't exist, add it to the Vec
             if !chain_exists {
                 let mut chain_symbols = self.user_chain_symbols.entry(username_hash);
-                chain_symbols.append().write(chain_symbol);
+                chain_symbols.append().write(chain_symbol.clone());
             }
 
             let new_wallet = Wallet {
-                chain_symbol,
+                chain_symbol: chain_symbol.clone(),
                 address: wallet_address,
                 memo,
                 tag,
@@ -210,7 +204,9 @@ mod Gateway {
                 updated_at: get_block_timestamp(),
             };
 
-            self.user_wallets.write((username_hash, chain_symbol), new_wallet);
+            self
+                .user_wallets
+                .write((username_hash, hash_username(chain_symbol.clone())), new_wallet);
 
             self
                 .emit(
@@ -230,8 +226,8 @@ mod Gateway {
         }
 
         ///  Remove Wallet from wallet list
-        fn remove_wallet(ref self: ContractState, chain_symbol: felt252) {
-            assert(chain_symbol.is_non_zero(), Errors::INVALID_chain_symbol);
+        fn remove_wallet(ref self: ContractState, chain_symbol: ByteArray) {
+            assert(chain_symbol.len() > 0, Errors::INVALID_chain_symbol);
 
             let caller = get_caller_address();
             let username = self.get_username(caller);
@@ -244,18 +240,22 @@ mod Gateway {
             let username_hash = hash_username(username.clone());
 
             // Verify the wallet exists for this chain
-            let wallet = self.user_wallets.read((username_hash, chain_symbol));
+            let wallet = self
+                .user_wallets
+                .read((username_hash, hash_username(chain_symbol.clone())));
             assert(wallet.address.is_non_zero(), Errors::WALLET_NOT_FOUND);
 
             let empty_wallet = Wallet {
-                chain_symbol: 0,
+                chain_symbol: "",
                 address: 0,
                 memo: Option::None,
                 tag: Option::None,
                 metadata: Option::None,
                 updated_at: 0,
             };
-            self.user_wallets.write((username_hash, chain_symbol), empty_wallet);
+            self
+                .user_wallets
+                .write((username_hash, hash_username(chain_symbol.clone())), empty_wallet);
 
             // Remove chain_symbol from the Vec
             let mut chain_symbols_vec = self.user_chain_symbols.entry(username_hash);
@@ -291,22 +291,23 @@ mod Gateway {
                         },
                     ),
                 );
-            // self._send_wallet_removal_to_l1(username_hash, chain_symbol);
         }
 
         /// Get wallet for a specific chain
-        fn get_wallet(self: @ContractState, username: ByteArray, chain_symbol: felt252) -> Wallet {
+        fn get_wallet(
+            self: @ContractState, username: ByteArray, chain_symbol: ByteArray,
+        ) -> Wallet {
             assert(username.len() != 0, Errors::INVALID_USERNAME);
-            assert(chain_symbol.is_non_zero(), Errors::INVALID_chain_symbol);
+            assert(chain_symbol.len() > 0, Errors::INVALID_chain_symbol);
 
             assert(self.is_account_active(username.clone()), Errors::ACCOUNT_INACTIVE);
 
             let username_hash = hash_username(username);
-            self.user_wallets.read((username_hash, chain_symbol))
+            self.user_wallets.read((username_hash, hash_username(chain_symbol)))
         }
 
         /// Get all chain IDs for a user
-        fn get_user_chain_symbols(self: @ContractState, username: ByteArray) -> Array<felt252> {
+        fn get_user_chain_symbols(self: @ContractState, username: ByteArray) -> Array<ByteArray> {
             assert(username.len() != 0, Errors::INVALID_USERNAME);
 
             assert(self.is_account_active(username.clone()), Errors::ACCOUNT_INACTIVE);
@@ -341,7 +342,7 @@ mod Gateway {
             let mut i: u64 = 0;
             while i != len {
                 let chain_symbol = chain_symbols_vec.at(i).read();
-                let wallet = self.user_wallets.read((username_hash, chain_symbol));
+                let wallet = self.user_wallets.read((username_hash, hash_username(chain_symbol)));
                 wallets.append(wallet);
                 i += 1;
             }
@@ -374,7 +375,7 @@ mod Gateway {
     #[generate_trait]
     impl InternalFunctions of InternalFunctionsTrait {
         fn _check_chain_exists(
-            self: @ContractState, username_hash: felt252, chain_symbol: felt252,
+            self: @ContractState, username_hash: felt252, chain_symbol: ByteArray,
         ) -> bool {
             let chain_symbols = self.user_chain_symbols.entry(username_hash);
             let len = chain_symbols.len();

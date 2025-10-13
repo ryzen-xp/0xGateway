@@ -61,4 +61,9 @@ export const chainOptions: ChainOption[] = [
     name: "Bitcoin",
     symbol: "BTC",
   },
+  {
+    id: "stellar",
+    name: "Stellar",
+    symbol: "XLM",
+  },
 ];

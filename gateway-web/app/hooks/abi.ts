@@ -88,7 +88,7 @@ export const ABI = [
     "members": [
       {
         "name": "chain_symbol",
-        "type": "core::felt252"
+        "type": "core::byte_array::ByteArray"
       },
       {
         "name": "address",
@@ -116,18 +116,6 @@ export const ABI = [
     "type": "interface",
     "name": "gateway::interface::IGateway",
     "items": [
-      {
-        "type": "function",
-        "name": "l1_address_set",
-        "inputs": [
-          {
-            "name": "l1_gateway_address",
-            "type": "core::felt252"
-          }
-        ],
-        "outputs": [],
-        "state_mutability": "external"
-      },
       {
         "type": "function",
         "name": "change_user_address",
@@ -204,7 +192,7 @@ export const ABI = [
         "inputs": [
           {
             "name": "chain_symbol",
-            "type": "core::felt252"
+            "type": "core::byte_array::ByteArray"
           },
           {
             "name": "wallet_address",
@@ -232,7 +220,7 @@ export const ABI = [
         "inputs": [
           {
             "name": "chain_symbol",
-            "type": "core::felt252"
+            "type": "core::byte_array::ByteArray"
           }
         ],
         "outputs": [],
@@ -280,7 +268,7 @@ export const ABI = [
           },
           {
             "name": "chain_symbol",
-            "type": "core::felt252"
+            "type": "core::byte_array::ByteArray"
           }
         ],
         "outputs": [
@@ -301,7 +289,7 @@ export const ABI = [
         ],
         "outputs": [
           {
-            "type": "core::array::Array::<core::felt252>"
+            "type": "core::array::Array::<core::byte_array::ByteArray>"
           }
         ],
         "state_mutability": "view"
@@ -358,7 +346,7 @@ export const ABI = [
       },
       {
         "name": "chain_symbol",
-        "type": "core::felt252",
+        "type": "core::byte_array::ByteArray",
         "kind": "data"
       },
       {
@@ -390,7 +378,7 @@ export const ABI = [
       },
       {
         "name": "chain_symbol",
-        "type": "core::felt252",
+        "type": "core::byte_array::ByteArray",
         "kind": "data"
       },
       {
