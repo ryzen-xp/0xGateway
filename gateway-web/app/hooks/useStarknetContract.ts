@@ -159,28 +159,6 @@ export const useStarknetContract = () => {
     [getContract]
   );
 
-  // Add these helpers at the top of your useStarknetContract file
-  const unwrapCairoOption = (value: any): any => {
-    if (value && typeof value === "object" && "Some" in value) {
-      return value.Some;
-    }
-    if (value && typeof value === "object" && "None" in value) {
-      return undefined;
-    }
-    return value;
-  };
-
-  const mapContractWalletToWallet = (contractWallet: any): Wallet => {
-    return {
-      chain_symbol: unwrapCairoOption(contractWallet.chain_symbol) ?? "",
-      address: unwrapCairoOption(contractWallet.wallet_address) ?? "",
-      memo: unwrapCairoOption(contractWallet.memo),
-      tag: unwrapCairoOption(contractWallet.tag),
-      metadata: unwrapCairoOption(contractWallet.metadata),
-      updated_at: unwrapCairoOption(contractWallet.updated_at) ?? Date.now(),
-    };
-  };
-
   const getUserWallets = useCallback(
     async (username: string): Promise<Wallet[]> => {
       setLoading(true);
@@ -190,11 +168,20 @@ export const useStarknetContract = () => {
         const contract = getContract();
         const wallets = await contract.get_all_user_wallets(username);
 
-        const processedWallets = (wallets as any[]).map(
-          mapContractWalletToWallet
-        );
-
-        return processedWallets;
+        return wallets.map((wallet: any) => ({
+          chain_symbol: wallet.chain_symbol,
+          address:
+            typeof wallet.address === "bigint"
+              ? "0x" + wallet.address.toString(16)
+              : wallet.address,
+          memo: wallet.memo?.Some ?? wallet.memo?.variant?.Some ?? undefined,
+          tag: wallet.tag?.Some ?? wallet.tag?.variant?.Some ?? undefined,
+          metadata:
+            wallet.metadata?.Some ??
+            wallet.metadata?.variant?.Some ??
+            undefined,
+          updated_at: wallet.updated_at,
+        }));
       } catch (err) {
         const errorMessage =
           err instanceof Error ? err.message : "Failed to get wallets";
