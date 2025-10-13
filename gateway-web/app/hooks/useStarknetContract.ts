@@ -159,7 +159,28 @@ export const useStarknetContract = () => {
     [getContract]
   );
 
-  // Get all user wallets
+  // Add these helpers at the top of your useStarknetContract file
+  const unwrapCairoOption = (value: any): any => {
+    if (value && typeof value === "object" && "Some" in value) {
+      return value.Some;
+    }
+    if (value && typeof value === "object" && "None" in value) {
+      return undefined;
+    }
+    return value;
+  };
+
+  const mapContractWalletToWallet = (contractWallet: any): Wallet => {
+    return {
+      chain_symbol: unwrapCairoOption(contractWallet.chain_symbol) ?? "",
+      address: unwrapCairoOption(contractWallet.wallet_address) ?? "",
+      memo: unwrapCairoOption(contractWallet.memo),
+      tag: unwrapCairoOption(contractWallet.tag),
+      metadata: unwrapCairoOption(contractWallet.metadata),
+      updated_at: unwrapCairoOption(contractWallet.updated_at) ?? Date.now(),
+    };
+  };
+
   const getUserWallets = useCallback(
     async (username: string): Promise<Wallet[]> => {
       setLoading(true);
@@ -168,7 +189,12 @@ export const useStarknetContract = () => {
       try {
         const contract = getContract();
         const wallets = await contract.get_all_user_wallets(username);
-        return wallets as Wallet[];
+
+        const processedWallets = (wallets as any[]).map(
+          mapContractWalletToWallet
+        );
+
+        return processedWallets;
       } catch (err) {
         const errorMessage =
           err instanceof Error ? err.message : "Failed to get wallets";
