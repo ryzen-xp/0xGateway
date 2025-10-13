@@ -171,15 +171,43 @@ export const useStarknetContract = () => {
 
       try {
         const contract = getContract();
-        const wallets = await contract.get_all_user_wallets(username);
 
-        console.log("Raw wallets from contract:", wallets);
+        // Try to call the contract with different approaches
+        let wallets;
+        try {
+          wallets = await contract.get_all_user_wallets(username);
+        } catch (contractError) {
+          console.error("Contract call error:", contractError);
 
-        if (!wallets || wallets.length === 0) {
+          // Try calling without automatic parsing
+          try {
+            const provider = new RpcProvider({ nodeUrl: RPC_URL });
+            const result = await provider.callContract({
+              contractAddress: CONTRACT_ADDRESS,
+              entrypoint: "get_all_user_wallets",
+              calldata: [username],
+            });
+
+            console.log("Raw contract result:", result);
+            // You'll need to manually parse this based on your contract's return format
+            wallets = [];
+          } catch (rawError) {
+            console.error("Raw contract call error:", rawError);
+            throw contractError; // Throw the original error
+          }
+        }
+
+        console.log("Parsed wallets:", wallets);
+
+        // Check if wallets is empty or invalid
+        if (!wallets || !Array.isArray(wallets) || wallets.length === 0) {
           return [];
         }
 
         return wallets.map((wallet: any) => {
+          console.log("Processing wallet:", wallet);
+
+          // Handle address conversion safely
           let addressStr: string;
 
           if (typeof wallet.address === "bigint") {
