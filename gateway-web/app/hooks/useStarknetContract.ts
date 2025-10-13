@@ -9,6 +9,7 @@ import {
   CairoOption,
 } from "starknet";
 import { ABI } from "./abi";
+import { isValidUsername, getUsernameError } from "../utils/validation";
 
 const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS;
 const RPC_URL = process.env.NEXT_PUBLIC_RPC_URL;
@@ -126,6 +127,10 @@ export const useStarknetContract = () => {
       setError(null);
 
       try {
+        const validationError = getUsernameError(username);
+        if (validationError) {
+          throw new Error(validationError);
+        }
         const contract = getContract();
         const exists = await contract.check_username_exist(username);
 
@@ -201,6 +206,11 @@ export const useStarknetContract = () => {
       setError(null);
 
       try {
+        const validationError = getUsernameError(username);
+        if (validationError) {
+          throw new Error(validationError);
+        }
+
         const contract = new Contract(ABI, CONTRACT_ADDRESS, account);
         const result = await contract.register_username(username);
         await account.waitForTransaction(result.transaction_hash);
@@ -254,6 +264,29 @@ export const useStarknetContract = () => {
     []
   );
 
+  const removeWallet = useCallback(
+    async (account: AccountInterface, chainSymbol: string) => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const contract = new Contract(ABI, CONTRACT_ADDRESS, account);
+        const result = await contract.remove_wallet(chainSymbol);
+
+        await account.waitForTransaction(result.transaction_hash);
+        return result;
+      } catch (err) {
+        const errorMessage =
+          err instanceof Error ? err.message : "Failed to remove wallet";
+        setError(errorMessage);
+        throw new Error(errorMessage);
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
+
   return {
     loading,
     error,
@@ -264,5 +297,6 @@ export const useStarknetContract = () => {
     registerUsername,
     addWallet,
     getUsername,
+    removeWallet,
   };
 };

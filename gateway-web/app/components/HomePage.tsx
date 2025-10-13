@@ -14,6 +14,7 @@ import {
 import { FeatureCard } from "./FeatureCard";
 import { useStarknetContract } from "../hooks/useStarknetContract";
 import { useStarknetWallet } from "../hooks/useStarknetWallet";
+import toast, { Toaster } from "react-hot-toast";
 
 interface SearchResult {
   username: string;
@@ -35,7 +36,7 @@ export const HomePage: React.FC = () => {
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) {
-      alert("Please enter a username");
+      toast.error("Please enter a username");
       return;
     }
 
@@ -48,7 +49,6 @@ export const HomePage: React.FC = () => {
           available: true,
         });
       } else {
-
         setSearchResult({
           username: searchQuery,
           available: false,
@@ -60,37 +60,37 @@ export const HomePage: React.FC = () => {
       }
     } catch (err) {
       console.error("Error checking username:", err);
-      alert("Failed to check username. Please try again.");
+      toast.error("Failed to check username. Please try again.");
     }
   };
 
   const handleRegister = async () => {
     if (!isConnected) {
-      alert("Please connect your wallet first");
+      toast.error("Please connect your wallet first");
       handleConnect();
       return;
     }
 
     if (!account) {
-      alert("No account found. Please connect your wallet.");
+      toast.error("No account found. Please connect your wallet.");
       return;
     }
 
     if (!searchQuery.trim()) {
-      alert("Please enter a username");
+      toast.error("Please enter a username");
       return;
     }
 
     setIsRegistering(true);
     try {
       await registerUsername(searchQuery, account);
-      alert(`Username @${searchQuery} registered successfully! 🎉`);
+      toast.success(`Username @${searchQuery} registered successfully! 🎉`);
       setSearchResult(null);
       setSearchQuery("");
       window.location.reload();
     } catch (err) {
       console.error("Error registering username:", err);
-      alert(
+      toast.error(
         "Failed to register username OR Already Have yo register. Please try again."
       );
     } finally {

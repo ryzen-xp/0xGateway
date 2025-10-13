@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import toast, { Toaster } from "react-hot-toast";
 import {
   Wallet as WalletIcon,
   PlusCircle,
@@ -27,7 +28,7 @@ type WalletUI = Wallet & {
 
 export const DashboardPage: React.FC<DashboardPageProps> = ({ username }) => {
   const { account, isConnected } = useStarknetWallet();
-  const { getUserWallets, addWallet } = useStarknetContract();
+  const { getUserWallets, addWallet, removeWallet } = useStarknetContract();
 
   const [wallets, setWallets] = useState<WalletUI[]>([]);
   const [isLoadingWallets, setIsLoadingWallets] = useState<boolean>(true);
@@ -84,6 +85,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ username }) => {
       } catch (err) {
         console.error("Failed to fetch wallets:", err);
         if (mounted) setError("Failed to fetch wallets. Please try again.");
+        toast.error("Failed to fetch wallets.");
       } finally {
         if (mounted) setIsLoadingWallets(false);
       }
@@ -99,6 +101,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ username }) => {
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     setCopied(text);
+    toast.success("Copied");
     setTimeout(() => setCopied(null), 1500);
   };
 
@@ -106,17 +109,18 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ username }) => {
   const handleAddWallet = async () => {
     const { chainId, address, memo, tag, metadata } = newWalletForm;
     if (!chainId || !address) {
-      alert("Please select chain and enter wallet address.");
+      toast.error("Please select chain and enter wallet address.");
       return;
     }
     if (!isConnected || !account) {
-      alert("Please connect your wallet to add linked wallets.");
+      toast.error("Please connect your wallet to add linked wallets.");
       return;
     }
 
     const selected = chainOptions.find((c) => c.id === chainId);
     if (!selected) {
-      alert("Selected chain not found.");
+      toast.error("Selected chain not found.");
+
       return;
     }
 
@@ -124,7 +128,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ username }) => {
     setError(null);
 
     try {
-      // Call contract to add wallet
       await addWallet(
         account,
         selected.symbol,
@@ -134,7 +137,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ username }) => {
         metadata || undefined
       );
 
-      // Update local state after successful transaction
       const newEntry: WalletUI = {
         chainSymbol: selected.symbol,
         address,
@@ -153,10 +155,11 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ username }) => {
         tag: "",
         metadata: "",
       });
-      alert("Wallet added successfully!");
+      toast.success("Wallet added successfully!");
     } catch (err) {
       console.error("Add wallet failed:", err);
       setError("Failed to add wallet. See console for details.");
+      toast.error("Failed to add wallet.");
     } finally {
       setIsAddingWallet(false);
     }
@@ -165,12 +168,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ username }) => {
   // Remove wallet (UI + contract)
   const handleRemoveWallet = async (addressToRemove: string) => {
     if (!isConnected || !account) {
-      alert("Please connect your wallet to remove linked wallets.");
+      toast.error("Please connect your wallet to remove linked wallets.");
       return;
     }
 
     const found = wallets.find((w) => w.address === addressToRemove);
     if (!found) return;
+
     const selectedChain = chainOptions.find(
       (c) => c.symbol.toLowerCase() === found.chainSymbol.toLowerCase()
     );
@@ -185,18 +189,17 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ username }) => {
     setError(null);
 
     try {
-      // TODO: Replace with actual contract remove call
-      // const tx = await removeWalletFromUser({ owner: account, chainSymbol: found.chainSymbol, address: addressToRemove });
-      // await waitForTx(tx);
+      await removeWallet(account, found.chainSymbol);
 
-      // Update local state
       setWallets((prev) => prev.filter((w) => w.address !== addressToRemove));
-      alert(
-        "Wallet removed (UI-only). Replace placeholder with on-chain call."
-      );
+
+      toast.success(`Removed from ${found.chainName}`);
     } catch (err) {
       console.error("Remove wallet failed:", err);
-      setError("Failed to remove wallet. See console for details.");
+      const errorMsg =
+        err instanceof Error ? err.message : "Failed to remove wallet";
+      setError(errorMsg);
+      toast.error(`Failed to remove wallet: ${errorMsg}`);
     } finally {
       setRemovingAddress(null);
     }
