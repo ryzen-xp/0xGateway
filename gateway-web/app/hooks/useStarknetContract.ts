@@ -38,7 +38,11 @@ export const useStarknetContract = () => {
   const [error, setError] = useState<string | null>(null);
 
   const getContract = useCallback(() => {
-    const provider = new RpcProvider({ nodeUrl: RPC_URL });
+    const provider = new RpcProvider({
+      nodeUrl: RPC_URL,
+      retries: 3,
+    });
+
     return new Contract(ABI, CONTRACT_ADDRESS, provider);
   }, []);
 
@@ -171,11 +175,34 @@ export const useStarknetContract = () => {
 
       try {
         const contract = getContract();
-        const wallets = await contract.get_all_user_wallets(username);
+
+        // Add timeout wrapper
+        const timeoutMs = 15000; // 15 seconds
+        const walletPromise = contract.get_all_user_wallets(username);
+
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("Request timeout")), timeoutMs)
+        );
+
+        const wallets = await Promise.race([walletPromise, timeoutPromise]);
 
         console.log("Raw wallets from contract:", wallets);
+        console.log("Wallets type:", typeof wallets);
+        console.log("Is array:", Array.isArray(wallets));
 
-        if (!wallets || wallets.length === 0) {
+        // Handle various response formats
+        if (!wallets) {
+          console.log("Wallets is null/undefined");
+          return [];
+        }
+
+        if (!Array.isArray(wallets)) {
+          console.error("Wallets is not an array:", wallets);
+          return [];
+        }
+
+        if (wallets.length === 0) {
+          console.log("No wallets found for user:", username);
           return [];
         }
 
@@ -192,22 +219,27 @@ export const useStarknetContract = () => {
           return true;
         });
 
+        if (validWallets.length === 0) {
+          console.log("No valid wallets after filtering");
+          return [];
+        }
+
         return validWallets.map((wallet: any) => {
           let addressStr: string;
 
           try {
             if (typeof wallet.address === "bigint") {
-              addressStr = "0x" + wallet.address.toString(16).padStart(40, "0");
+              addressStr = "0x" + wallet.address.toString(16).padStart(64, "0"); // Starknet uses 64 chars
             } else if (typeof wallet.address === "string") {
               addressStr = wallet.address.startsWith("0x")
                 ? wallet.address
                 : "0x" + wallet.address;
             } else if (typeof wallet.address === "number") {
-              addressStr = "0x" + wallet.address.toString(16).padStart(40, "0");
+              addressStr = "0x" + wallet.address.toString(16).padStart(64, "0");
             } else {
               // Last resort: try to convert to BigInt
               addressStr =
-                "0x" + BigInt(wallet.address).toString(16).padStart(40, "0");
+                "0x" + BigInt(wallet.address).toString(16).padStart(64, "0");
             }
           } catch (conversionError) {
             console.error(
@@ -215,7 +247,7 @@ export const useStarknetContract = () => {
               wallet.address,
               conversionError
             );
-            addressStr = "0x0000000000000000000000000000000000000000";
+            addressStr = "0x" + "0".repeat(64); // Starknet zero address
           }
 
           return {
@@ -232,10 +264,18 @@ export const useStarknetContract = () => {
         });
       } catch (err) {
         console.error("getUserWallets error:", err);
+        console.error("Error type:", err?.constructor?.name);
+        console.error(
+          "Error message:",
+          err instanceof Error ? err.message : String(err)
+        );
+
         const errorMessage =
           err instanceof Error ? err.message : "Failed to get wallets";
         setError(errorMessage);
-        throw new Error(errorMessage);
+
+        // Don't throw, return empty array to prevent UI crash
+        return [];
       } finally {
         setLoading(false);
       }
