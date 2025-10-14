@@ -3,7 +3,7 @@ import React from "react";
 import { Shield, Link, Globe, User, Code2 } from "lucide-react";
 
 const STARKNET_CONTRACT_ADDRESS =
-  "0x063bd23c0c524fa9fa2693e4945009acf9ba80341564ab429f4ab578c6253eeb"; 
+  "0x0168d8bcadf2961c0f1cf2dfded1521fc84952e0aec21b6a88438df8d9c99196";
 
 const Docs: React.FC = () => {
   return (
@@ -25,13 +25,18 @@ const Docs: React.FC = () => {
 
         {/* Contract Address */}
         <section className="space-y-2 text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-purple-700/10 border border-purple-700/40 rounded-xl text-purple-300 text-sm">
+          <a
+            href={`https://sepolia.voyager.online/contract/${STARKNET_CONTRACT_ADDRESS}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-purple-700/10 border border-purple-700/40 rounded-xl text-purple-300 text-sm hover:bg-purple-700/20 transition"
+          >
             <Code2 className="w-4 h-4" />
             Starknet Contract:
-            <span className="text-purple-200 font-mono">
+            <span className="text-purple-200 font-mono underline">
               {STARKNET_CONTRACT_ADDRESS}
             </span>
-          </div>
+          </a>
           <div className="text-gray-400 text-sm">
             Currently live on Starknet. Deployments for Ethereum, EVM chains,
             Solana, and Stellar are coming soon.
