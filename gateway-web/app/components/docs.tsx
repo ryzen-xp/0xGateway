@@ -2,8 +2,7 @@
 import React from "react";
 import { Shield, Link, Globe, User, Code2 } from "lucide-react";
 
-const STARKNET_CONTRACT_ADDRESS =
-  "0x0168d8bcadf2961c0f1cf2dfded1521fc84952e0aec21b6a88438df8d9c99196";
+const STARKNET_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS;
 
 const Docs: React.FC = () => {
   return (
