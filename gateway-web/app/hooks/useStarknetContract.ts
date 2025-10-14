@@ -164,64 +164,64 @@ export const useStarknetContract = () => {
     [getContract]
   );
 
- const getUserWallets = useCallback(
-   async (username: string): Promise<Wallet[]> => {
-     setLoading(true);
-     setError(null);
+  const getUserWallets = useCallback(
+    async (username: string): Promise<Wallet[]> => {
+      setLoading(true);
+      setError(null);
 
-     try {
-       const contract = getContract();
-       const wallets = await contract.get_all_user_wallets(username);
+      try {
+        const contract = getContract();
+        const wallets = await contract.get_all_user_wallets(username);
 
-       console.log("Raw wallets from contract:", wallets);
+        console.log("Raw wallets from contract:", wallets);
 
-       if (!wallets || wallets.length === 0) {
-         return [];
-       }
+        if (!wallets || wallets.length === 0) {
+          return [];
+        }
 
-       return wallets.map((wallet: any) => {
-         let addressStr: string;
+        return wallets.map((wallet: any) => {
+          let addressStr: string;
 
-         if (typeof wallet.address === "bigint") {
-           addressStr = "0x" + wallet.address.toString(16);
-         } else if (typeof wallet.address === "string") {
-           addressStr = wallet.address;
-         } else if (wallet.address !== undefined && wallet.address !== null) {
-           try {
-             addressStr = "0x" + BigInt(wallet.address).toString(16);
-           } catch {
-             console.error("Failed to convert address:", wallet.address);
-             addressStr = String(wallet.address);
-           }
-         } else {
-           console.error("Invalid wallet address:", wallet);
-           addressStr = "0x0";
-         }
+          if (typeof wallet.address === "bigint") {
+            addressStr = "0x" + wallet.address.toString(16);
+          } else if (typeof wallet.address === "string") {
+            addressStr = wallet.address;
+          } else if (wallet.address !== undefined && wallet.address !== null) {
+            try {
+              addressStr = "0x" + BigInt(wallet.address).toString(16);
+            } catch {
+              console.error("Failed to convert address:", wallet.address);
+              addressStr = String(wallet.address);
+            }
+          } else {
+            console.error("Invalid wallet address:", wallet);
+            addressStr = "0x0";
+          }
 
-         return {
-           chain_symbol: wallet.chain_symbol || "",
-           address: addressStr,
-           memo: wallet.memo?.Some ?? wallet.memo?.variant?.Some ?? undefined,
-           tag: wallet.tag?.Some ?? wallet.tag?.variant?.Some ?? undefined,
-           metadata:
-             wallet.metadata?.Some ??
-             wallet.metadata?.variant?.Some ??
-             undefined,
-           updated_at: wallet.updated_at || 0,
-         };
-       });
-     } catch (err) {
-       console.error("getUserWallets error:", err);
-       const errorMessage =
-         err instanceof Error ? err.message : "Failed to get wallets";
-       setError(errorMessage);
-       throw new Error(errorMessage);
-     } finally {
-       setLoading(false);
-     }
-   },
-   [getContract]
- );
+          return {
+            chain_symbol: wallet.chain_symbol || "",
+            address: addressStr,
+            memo: wallet.memo?.Some ?? wallet.memo?.variant?.Some ?? undefined,
+            tag: wallet.tag?.Some ?? wallet.tag?.variant?.Some ?? undefined,
+            metadata:
+              wallet.metadata?.Some ??
+              wallet.metadata?.variant?.Some ??
+              undefined,
+            updated_at: wallet.updated_at || 0,
+          };
+        });
+      } catch (err) {
+        console.error("getUserWallets error:", err);
+        const errorMessage =
+          err instanceof Error ? err.message : "Failed to get wallets";
+        setError(errorMessage);
+        throw new Error(errorMessage);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [getContract]
+  );
 
   // Register username (requires wallet connection)
   const registerUsername = useCallback(
