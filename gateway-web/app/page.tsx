@@ -4,9 +4,12 @@ import { Navbar } from "./components/Navbar";
 import { HomePage } from "./components/HomePage";
 import { DashboardPage } from "./components/DashboardPage";
 import { useStarknetWallet } from "./hooks/useStarknetWallet";
+import Docs from "./components/docs";
 
 export default function App() {
-  const [currentPage, setCurrentPage] = useState<"home" | "dashboard">("home");
+  const [currentPage, setCurrentPage] = useState<"home" | "dashboard" | "docs">(
+    "home"
+  );
   const { isConnected, username } = useStarknetWallet();
 
   return (
@@ -16,13 +19,18 @@ export default function App() {
 
       <main className="px-6 py-10 max-w-7xl mx-auto">
         {/* Show pages based on connection + selected page */}
-        {!isConnected && <HomePage />}
+        {!isConnected && (
+          <HomePage currentPage={currentPage} setCurrentPage={setCurrentPage} />
+        )}
 
-        {isConnected && currentPage === "home" && <HomePage />}
+        {isConnected && currentPage === "home" && (
+          <HomePage currentPage={currentPage} setCurrentPage={setCurrentPage} />
+        )}
 
         {isConnected && username !== "" && currentPage === "dashboard" && (
           <DashboardPage username={username} />
         )}
+        {currentPage === "docs" && <Docs></Docs>}
       </main>
 
       <footer className="text-center text-gray-500 py-6 border-t border-white/10 mt-12">

@@ -25,7 +25,15 @@ interface SearchResult {
   };
 }
 
-export const HomePage: React.FC = () => {
+interface HomeProps {
+  currentPage: "home" | "dashboard" | "docs";
+  setCurrentPage: (page: "home" | "dashboard" | "docs") => void;
+}
+
+export const HomePage: React.FC<HomeProps> = ({
+  currentPage,
+  setCurrentPage,
+}) => {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [searchResult, setSearchResult] = useState<SearchResult | null>(null);
   const [isRegistering, setIsRegistering] = useState(false);
@@ -127,8 +135,11 @@ export const HomePage: React.FC = () => {
           >
             Get Started <ArrowRight className="w-5 h-5" />
           </button>
-          <button className="px-8 py-4 bg-white/5 hover:bg-white/10 text-white font-semibold rounded-xl border border-white/10">
-            Learn More
+          <button
+            onClick={() => setCurrentPage("docs")}
+            className="px-8 py-4 bg-white/5 hover:bg-white/10 text-white font-semibold rounded-xl border border-white/10"
+          >
+            Documentation
           </button>
         </div>
       </div>

@@ -311,6 +311,91 @@ export const useStarknetContract = () => {
     []
   );
 
+  // Check if account is active
+  const isAccountActive = useCallback(
+    async (username: string): Promise<boolean> => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const contract = getContract();
+        const active = await contract.is_account_active(username);
+        return active as boolean;
+      } catch (err) {
+        const errorMessage =
+          err instanceof Error ? err.message : "Failed to check account status";
+        setError(errorMessage);
+        throw new Error(errorMessage);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [getContract]
+  );
+
+  // Change user address
+  const changeUserAddress = useCallback(
+    async (account: AccountInterface, newAddress: string) => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const contract = new Contract(ABI, CONTRACT_ADDRESS, account);
+        const result = await contract.change_user_address(newAddress);
+        await account.waitForTransaction(result.transaction_hash);
+        return result;
+      } catch (err) {
+        const errorMessage =
+          err instanceof Error ? err.message : "Failed to change user address";
+        setError(errorMessage);
+        throw new Error(errorMessage);
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
+
+  // Deactivate account
+  const deactivateAccount = useCallback(async (account: AccountInterface) => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const contract = new Contract(ABI, CONTRACT_ADDRESS, account);
+      const result = await contract.deactivate_account();
+      await account.waitForTransaction(result.transaction_hash);
+      return result;
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to deactivate account";
+      setError(errorMessage);
+      throw new Error(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Reactivate account
+  const reactivateAccount = useCallback(async (account: AccountInterface) => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const contract = new Contract(ABI, CONTRACT_ADDRESS, account);
+      const result = await contract.reactivate_account();
+      await account.waitForTransaction(result.transaction_hash);
+      return result;
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to reactivate account";
+      setError(errorMessage);
+      throw new Error(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   return {
     loading,
     error,
@@ -322,5 +407,9 @@ export const useStarknetContract = () => {
     addWallet,
     getUsername,
     removeWallet,
+    deactivateAccount,
+    reactivateAccount,
+    isAccountActive,
+    changeUserAddress,
   };
 };
