@@ -164,92 +164,64 @@ export const useStarknetContract = () => {
     [getContract]
   );
 
-  const getUserWallets = useCallback(
-    async (username: string): Promise<Wallet[]> => {
-      setLoading(true);
-      setError(null);
+ const getUserWallets = useCallback(
+   async (username: string): Promise<Wallet[]> => {
+     setLoading(true);
+     setError(null);
 
-      try {
-        const contract = getContract();
+     try {
+       const contract = getContract();
+       const wallets = await contract.get_all_user_wallets(username);
 
-        // Try to call the contract with different approaches
-        let wallets;
-        try {
-          wallets = await contract.get_all_user_wallets(username);
-        } catch (contractError) {
-          console.error("Contract call error:", contractError);
+       console.log("Raw wallets from contract:", wallets);
 
-          // Try calling without automatic parsing
-          try {
-            const provider = new RpcProvider({ nodeUrl: RPC_URL });
-            const result = await provider.callContract({
-              contractAddress: CONTRACT_ADDRESS,
-              entrypoint: "get_all_user_wallets",
-              calldata: [username],
-            });
+       if (!wallets || wallets.length === 0) {
+         return [];
+       }
 
-            console.log("Raw contract result:", result);
-            // You'll need to manually parse this based on your contract's return format
-            wallets = [];
-          } catch (rawError) {
-            console.error("Raw contract call error:", rawError);
-            throw contractError; // Throw the original error
-          }
-        }
+       return wallets.map((wallet: any) => {
+         let addressStr: string;
 
-        console.log("Parsed wallets:", wallets);
+         if (typeof wallet.address === "bigint") {
+           addressStr = "0x" + wallet.address.toString(16);
+         } else if (typeof wallet.address === "string") {
+           addressStr = wallet.address;
+         } else if (wallet.address !== undefined && wallet.address !== null) {
+           try {
+             addressStr = "0x" + BigInt(wallet.address).toString(16);
+           } catch {
+             console.error("Failed to convert address:", wallet.address);
+             addressStr = String(wallet.address);
+           }
+         } else {
+           console.error("Invalid wallet address:", wallet);
+           addressStr = "0x0";
+         }
 
-        // Check if wallets is empty or invalid
-        if (!wallets || !Array.isArray(wallets) || wallets.length === 0) {
-          return [];
-        }
-
-        return wallets.map((wallet: any) => {
-          console.log("Processing wallet:", wallet);
-
-          // Handle address conversion safely
-          let addressStr: string;
-
-          if (typeof wallet.address === "bigint") {
-            addressStr = "0x" + wallet.address.toString(16);
-          } else if (typeof wallet.address === "string") {
-            addressStr = wallet.address;
-          } else if (wallet.address !== undefined && wallet.address !== null) {
-            try {
-              addressStr = "0x" + BigInt(wallet.address).toString(16);
-            } catch {
-              console.error("Failed to convert address:", wallet.address);
-              addressStr = String(wallet.address);
-            }
-          } else {
-            console.error("Invalid wallet address:", wallet);
-            addressStr = "0x0";
-          }
-
-          return {
-            chain_symbol: wallet.chain_symbol || "",
-            address: addressStr,
-            memo: wallet.memo?.Some ?? wallet.memo?.variant?.Some ?? undefined,
-            tag: wallet.tag?.Some ?? wallet.tag?.variant?.Some ?? undefined,
-            metadata:
-              wallet.metadata?.Some ??
-              wallet.metadata?.variant?.Some ??
-              undefined,
-            updated_at: wallet.updated_at || 0,
-          };
-        });
-      } catch (err) {
-        console.error("getUserWallets error:", err);
-        const errorMessage =
-          err instanceof Error ? err.message : "Failed to get wallets";
-        setError(errorMessage);
-        throw new Error(errorMessage);
-      } finally {
-        setLoading(false);
-      }
-    },
-    [getContract]
-  );
+         return {
+           chain_symbol: wallet.chain_symbol || "",
+           address: addressStr,
+           memo: wallet.memo?.Some ?? wallet.memo?.variant?.Some ?? undefined,
+           tag: wallet.tag?.Some ?? wallet.tag?.variant?.Some ?? undefined,
+           metadata:
+             wallet.metadata?.Some ??
+             wallet.metadata?.variant?.Some ??
+             undefined,
+           updated_at: wallet.updated_at || 0,
+         };
+       });
+     } catch (err) {
+       console.error("getUserWallets error:", err);
+       const errorMessage =
+         err instanceof Error ? err.message : "Failed to get wallets";
+       setError(errorMessage);
+       throw new Error(errorMessage);
+     } finally {
+       setLoading(false);
+     }
+   },
+   [getContract]
+ );
 
   // Register username (requires wallet connection)
   const registerUsername = useCallback(
