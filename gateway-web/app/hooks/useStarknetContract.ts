@@ -186,14 +186,16 @@ export const useStarknetContract = () => {
             addressStr = "0x" + wallet.address.toString(16);
           } else if (typeof wallet.address === "string") {
             addressStr = wallet.address;
-          } else if (wallet.address !== undefined && wallet.address !== null) {
-            try {
-              addressStr = "0x" + BigInt(wallet.address).toString(16);
-            } catch {
-              console.error("Failed to convert address:", wallet.address);
-              addressStr = String(wallet.address);
-            }
-          } else {
+          }
+          // } else if (wallet.address !== undefined && wallet.address !== null) {
+          //   try {
+          //     addressStr = "0x" + BigInt(wallet.address).toString(16);
+          //   } catch {
+          //     console.error("Failed to convert address:", wallet.address);
+          //     addressStr = String(wallet.address);
+          //   }
+          // }
+          else {
             console.error("Invalid wallet address:", wallet);
             addressStr = "0x0";
           }
