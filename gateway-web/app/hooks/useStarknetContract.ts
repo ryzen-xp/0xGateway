@@ -179,25 +179,43 @@ export const useStarknetContract = () => {
           return [];
         }
 
-        return wallets.map((wallet: any) => {
+        // Filter out invalid wallets before mapping
+        const validWallets = wallets.filter((wallet: any) => {
+          if (!wallet) {
+            console.warn("Null/undefined wallet entry");
+            return false;
+          }
+          if (wallet.address === undefined || wallet.address === null) {
+            console.warn("Wallet missing address:", wallet);
+            return false;
+          }
+          return true;
+        });
+
+        return validWallets.map((wallet: any) => {
           let addressStr: string;
 
-          if (typeof wallet.address === "bigint") {
-            addressStr = "0x" + wallet.address.toString(16);
-          } else if (typeof wallet.address === "string") {
-            addressStr = wallet.address;
-          }
-          // } else if (wallet.address !== undefined && wallet.address !== null) {
-          //   try {
-          //     addressStr = "0x" + BigInt(wallet.address).toString(16);
-          //   } catch {
-          //     console.error("Failed to convert address:", wallet.address);
-          //     addressStr = String(wallet.address);
-          //   }
-          // }
-          else {
-            console.error("Invalid wallet address:", wallet);
-            addressStr = "0x0";
+          try {
+            if (typeof wallet.address === "bigint") {
+              addressStr = "0x" + wallet.address.toString(16).padStart(40, "0");
+            } else if (typeof wallet.address === "string") {
+              addressStr = wallet.address.startsWith("0x")
+                ? wallet.address
+                : "0x" + wallet.address;
+            } else if (typeof wallet.address === "number") {
+              addressStr = "0x" + wallet.address.toString(16).padStart(40, "0");
+            } else {
+              // Last resort: try to convert to BigInt
+              addressStr =
+                "0x" + BigInt(wallet.address).toString(16).padStart(40, "0");
+            }
+          } catch (conversionError) {
+            console.error(
+              "Failed to convert address:",
+              wallet.address,
+              conversionError
+            );
+            addressStr = "0x0000000000000000000000000000000000000000";
           }
 
           return {
