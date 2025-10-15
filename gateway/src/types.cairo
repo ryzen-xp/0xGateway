@@ -12,7 +12,7 @@ pub struct UserInfo {
 #[derive(Drop, Serde, starknet::Store, Debug)]
 pub struct Wallet {
     pub chain_symbol: ByteArray,
-    pub address: felt252,
+    pub address: ByteArray,
     pub memo: Option<u128>,
     pub tag: Option<u128>,
     pub metadata: Option<ByteArray>,

@@ -11,7 +11,7 @@ pub struct UsernameRegistered {
 pub struct WalletAdded {
     pub user_address: ContractAddress,
     pub chain_symbol: ByteArray,
-    pub wallet_address: felt252,
+    pub wallet_address: ByteArray,
     pub timestamp: u64,
 }
 

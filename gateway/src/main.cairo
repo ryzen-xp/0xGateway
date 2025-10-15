@@ -13,7 +13,7 @@ mod Gateway {
         Map, MutableVecTrait, StorageMapReadAccess, StorageMapWriteAccess, StoragePathEntry,
         StoragePointerReadAccess, StoragePointerWriteAccess, Vec, VecTrait,
     };
-       use starknet::{ContractAddress, get_block_timestamp, get_caller_address};
+    use starknet::{ContractAddress, get_block_timestamp, get_caller_address};
 
     #[storage]
     struct Storage {
@@ -169,13 +169,13 @@ mod Gateway {
         fn add_wallets(
             ref self: ContractState,
             chain_symbol: ByteArray,
-            wallet_address: felt252,
+            wallet_address: ByteArray,
             memo: Option<u128>,
             tag: Option<u128>,
             metadata: Option<ByteArray>,
         ) {
-            assert(chain_symbol.len() > 0, Errors::INVALID_chain_symbol);
-            assert(wallet_address.is_non_zero(), Errors::INVALID_WALLET_ADDRESS);
+            assert(chain_symbol.len() > 0, Errors::INVALID_CHAIN_SYMBOL);
+            assert(wallet_address.len() > 0, Errors::INVALID_WALLET_ADDRESS);
 
             let caller = get_caller_address();
             let username = self.get_username(caller);
@@ -197,13 +197,12 @@ mod Gateway {
 
             let new_wallet = Wallet {
                 chain_symbol: chain_symbol.clone(),
-                address: wallet_address,
+                address: wallet_address.clone(),
                 memo,
                 tag,
                 metadata,
                 updated_at: get_block_timestamp(),
             };
-
             self
                 .user_wallets
                 .write((username_hash, hash_username(chain_symbol.clone())), new_wallet);
@@ -227,12 +226,12 @@ mod Gateway {
 
         ///  Remove Wallet from wallet list
         fn remove_wallet(ref self: ContractState, chain_symbol: ByteArray) {
-            assert(chain_symbol.len() > 0, Errors::INVALID_chain_symbol);
+            assert(chain_symbol.len() > 0, Errors::INVALID_CHAIN_SYMBOL);
 
             let caller = get_caller_address();
             let username = self.get_username(caller);
 
-            assert(username.len() != 0, Errors::INVALID_USERNAME);
+            assert(username.len() != 0, Errors::USER_NOT_REGISTERED);
             assert(self.check_username_exist(username.clone()), Errors::USER_NOT_REGISTERED);
 
             assert(self.is_account_active(username.clone()), Errors::ACCOUNT_INACTIVE);
@@ -243,11 +242,11 @@ mod Gateway {
             let wallet = self
                 .user_wallets
                 .read((username_hash, hash_username(chain_symbol.clone())));
-            assert(wallet.address.is_non_zero(), Errors::WALLET_NOT_FOUND);
+            assert(wallet.address.len() > 0, Errors::WALLET_NOT_FOUND);
 
             let empty_wallet = Wallet {
                 chain_symbol: "",
-                address: 0,
+                address: "",
                 memo: Option::None,
                 tag: Option::None,
                 metadata: Option::None,
@@ -298,7 +297,7 @@ mod Gateway {
             self: @ContractState, username: ByteArray, chain_symbol: ByteArray,
         ) -> Wallet {
             assert(username.len() != 0, Errors::INVALID_USERNAME);
-            assert(chain_symbol.len() > 0, Errors::INVALID_chain_symbol);
+            assert(chain_symbol.len() > 0, Errors::INVALID_CHAIN_SYMBOL);
 
             assert(self.is_account_active(username.clone()), Errors::ACCOUNT_INACTIVE);
 

@@ -3,7 +3,7 @@ pub mod Errors {
     pub const INVALID_USERNAME: felt252 = 'INVALID_USERNAME';
     pub const INVALID_ADDRESS: felt252 = 'INVALID_ADDRESS';
     pub const CALLER_ALREADY_HAVE_USERNAME: felt252 = 'CALLER_ALREADY_HAVE_USERNAME';
-    pub const INVALID_chain_symbol: felt252 = 'INVALID_chain_symbol';
+    pub const INVALID_CHAIN_SYMBOL: felt252 = 'INVALID_CHAIN_SYMBOL';
     pub const INVALID_WALLET_ADDRESS: felt252 = 'INVALID_WALLET_ADDRESS';
     pub const USER_NOT_REGISTERED: felt252 = 'USER_NOT_REGISTERED';
     pub const WALLET_NOT_FOUND: felt252 = 'WALLET_NOT_FOUND';

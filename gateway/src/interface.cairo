@@ -13,7 +13,7 @@ pub trait IGateway<TContractState> {
     fn add_wallets(
         ref self: TContractState,
         chain_symbol: ByteArray,
-        wallet_address: felt252,
+        wallet_address: ByteArray,
         memo: Option<u128>,
         tag: Option<u128>,
         metadata: Option<ByteArray>,

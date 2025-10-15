@@ -9,13 +9,11 @@ pub fn BOB() -> ContractAddress {
     contract_address_const::<'BOB'>()
 }
 
-
 fn deploy_contract() -> ContractAddress {
     let contract = declare("Gateway").unwrap().contract_class();
     let (contract_address, _) = contract.deploy(@ArrayTrait::new()).unwrap();
     contract_address
 }
-
 
 #[test]
 fn test_reg_username_pass() {
@@ -42,6 +40,7 @@ fn test_reg_username_failed() {
 
     dispatcher.register_username(username);
 }
+
 #[test]
 #[should_panic(expected: ('USERNAME_TAKEN',))]
 fn test_reg_same_username_bob() {
@@ -56,7 +55,6 @@ fn test_reg_same_username_bob() {
     dispatcher.register_username(username);
     stop_cheat_caller_address(contract_address);
 }
-
 
 #[test]
 #[should_panic(expected: ('CALLER_ALREADY_HAVE_USERNAME',))]
@@ -80,12 +78,15 @@ fn test_add_wallet_pass() {
     let username: ByteArray = "ryzen_xp";
     dispatcher.register_username(username.clone());
 
-    let chain_symbol: felt252 = 1;
-    let wallet_address: felt252 = 0x123456;
+    let chain_symbol: ByteArray = "ETH";
+    let wallet_address: ByteArray = "0x1234567890abcdef";
 
     let mut spy = spy_events();
 
-    dispatcher.add_wallets(chain_symbol, wallet_address, Option::None, Option::None, Option::None);
+    dispatcher
+        .add_wallets(
+            chain_symbol, wallet_address, Option::None(()), Option::None(()), Option::None(()),
+        );
 
     let events = spy.get_events();
     assert(events.events.len() == 1, 'Should emit 1 event');
@@ -97,14 +98,17 @@ fn test_add_wallet_without_registration() {
     let contract_address = deploy_contract();
     let dispatcher = IGatewayDispatcher { contract_address };
 
-    let chain_symbol: felt252 = 1;
-    let wallet_address: felt252 = 0x123456;
+    let chain_symbol: ByteArray = "ETH";
+    let wallet_address: ByteArray = "0x1234567890abcdef";
 
-    dispatcher.add_wallets(chain_symbol, wallet_address, Option::None, Option::None, Option::None);
+    dispatcher
+        .add_wallets(
+            chain_symbol, wallet_address, Option::None(()), Option::None(()), Option::None(()),
+        );
 }
 
 #[test]
-#[should_panic(expected: ('INVALID_chain_symbol',))]
+#[should_panic(expected: ('INVALID_CHAIN_SYMBOL',))]
 fn test_add_wallet_invalid_chain_symbol() {
     let contract_address = deploy_contract();
     let dispatcher = IGatewayDispatcher { contract_address };
@@ -112,10 +116,13 @@ fn test_add_wallet_invalid_chain_symbol() {
     let username: ByteArray = "ryzen_xp";
     dispatcher.register_username(username);
 
-    let chain_symbol: felt252 = 0;
-    let wallet_address: felt252 = 0x123456;
+    let chain_symbol: ByteArray = "";
+    let wallet_address: ByteArray = "0x1234567890abcdef";
 
-    dispatcher.add_wallets(chain_symbol, wallet_address, Option::None, Option::None, Option::None);
+    dispatcher
+        .add_wallets(
+            chain_symbol, wallet_address, Option::None(()), Option::None(()), Option::None(()),
+        );
 }
 
 #[test]
@@ -127,10 +134,13 @@ fn test_add_wallet_invalid_address() {
     let username: ByteArray = "ryzen_xp";
     dispatcher.register_username(username);
 
-    let chain_symbol: felt252 = 1;
-    let wallet_address: felt252 = 0;
+    let chain_symbol: ByteArray = "ETH";
+    let wallet_address: ByteArray = "";
 
-    dispatcher.add_wallets(chain_symbol, wallet_address, Option::None, Option::None, Option::None);
+    dispatcher
+        .add_wallets(
+            chain_symbol, wallet_address, Option::None(()), Option::None(()), Option::None(()),
+        );
 }
 
 #[test]
@@ -141,12 +151,12 @@ fn test_add_multiple_wallets() {
     let username: ByteArray = "ryzen_xp";
     dispatcher.register_username(username.clone());
 
-    dispatcher.add_wallets('STRK', 0x111, Option::None, Option::None, Option::None);
-    dispatcher.add_wallets('ETH', 0x222, Option::None, Option::None, Option::None);
-    dispatcher.add_wallets('BNB', 0x333, Option::None, Option::None, Option::None);
+    dispatcher.add_wallets("STRK", "0x111", Option::None(()), Option::None(()), Option::None(()));
+    dispatcher.add_wallets("ETH", "0x222", Option::None(()), Option::None(()), Option::None(()));
+    dispatcher.add_wallets("BNB", "0x333", Option::None(()), Option::None(()), Option::None(()));
 
     let chain_symbols = dispatcher.get_user_chain_symbols(username);
-    assert(chain_symbols.len() == 3, 'Should have 3 chain IDs');
+    assert(chain_symbols.len() == 3, 'Should have 3 chain symbols');
 }
 
 // ==================== REMOVE WALLET TESTS ====================
@@ -159,29 +169,37 @@ fn test_remove_wallet_pass() {
     let username: ByteArray = "ryzen_xp";
     dispatcher.register_username(username.clone());
 
-    let chain_symbol: felt252 = 1;
-    let wallet_address: felt252 = 0x123456;
+    let chain_symbol: ByteArray = "ETH";
+    let wallet_address: ByteArray = "0x1234567890abcdef";
 
-    dispatcher.add_wallets(chain_symbol, wallet_address, Option::None, Option::None, Option::None);
+    dispatcher
+        .add_wallets(
+            chain_symbol.clone(),
+            wallet_address,
+            Option::None(()),
+            Option::None(()),
+            Option::None(()),
+        );
 
     let mut spy = spy_events();
 
-    dispatcher.remove_wallet(chain_symbol);
+    dispatcher.remove_wallet(chain_symbol.clone());
 
     let events = spy.get_events();
     assert(events.events.len() == 1, 'Should emit 1 event');
 
     let chain_symbols = dispatcher.get_user_chain_symbols(username);
-    assert(chain_symbols.len() == 0, 'Should have 0 chain IDs');
+    assert(chain_symbols.len() == 0, 'Should have 0 chain symbols');
 }
 
 #[test]
-#[should_panic(expected: ('INVALID_USERNAME',))]
+#[should_panic(expected: ('USER_NOT_REGISTERED',))]
 fn test_remove_wallet_not_registered() {
     let contract_address = deploy_contract();
     let dispatcher = IGatewayDispatcher { contract_address };
 
-    let chain_symbol: felt252 = 1;
+    let chain_symbol: ByteArray = "ETH";
+
     dispatcher.remove_wallet(chain_symbol);
 }
 
@@ -194,12 +212,13 @@ fn test_remove_wallet_not_exist() {
     let username: ByteArray = "ryzen_xp";
     dispatcher.register_username(username);
 
-    let chain_symbol: felt252 = 1;
+    let chain_symbol: ByteArray = "ETH";
+
     dispatcher.remove_wallet(chain_symbol);
 }
 
 #[test]
-#[should_panic(expected: ('INVALID_chain_symbol',))]
+#[should_panic(expected: ('INVALID_CHAIN_SYMBOL',))]
 fn test_remove_wallet_invalid_chain() {
     let contract_address = deploy_contract();
     let dispatcher = IGatewayDispatcher { contract_address };
@@ -207,7 +226,9 @@ fn test_remove_wallet_invalid_chain() {
     let username: ByteArray = "ryzen_xp";
     dispatcher.register_username(username);
 
-    dispatcher.remove_wallet(0);
+    let chain_symbol: ByteArray = "";
+
+    dispatcher.remove_wallet(chain_symbol);
 }
 
 #[test]
@@ -218,14 +239,14 @@ fn test_remove_wallet_from_multiple() {
     let username: ByteArray = "ryzen_xp";
     dispatcher.register_username(username.clone());
 
-    dispatcher.add_wallets(1, 0x111, Option::None, Option::None, Option::None);
-    dispatcher.add_wallets(2, 0x222, Option::None, Option::None, Option::None);
-    dispatcher.add_wallets(3, 0x333, Option::None, Option::None, Option::None);
+    dispatcher.add_wallets("ETH", "0x111", Option::None(()), Option::None(()), Option::None(()));
+    dispatcher.add_wallets("STRK", "0x222", Option::None(()), Option::None(()), Option::None(()));
+    dispatcher.add_wallets("BNB", "0x333", Option::None(()), Option::None(()), Option::None(()));
 
-    dispatcher.remove_wallet(2);
+    dispatcher.remove_wallet("STRK");
 
     let chain_symbols = dispatcher.get_user_chain_symbols(username);
-    assert(chain_symbols.len() == 2, 'Should have 2 chain IDs');
+    assert(chain_symbols.len() == 2, 'Should have 2 chain symbols');
 }
 
 // ==================== GET WALLET TESTS ====================
@@ -238,14 +259,21 @@ fn test_get_wallet_pass() {
     let username: ByteArray = "ryzen_xp";
     dispatcher.register_username(username.clone());
 
-    let chain_symbol: felt252 = 1;
-    let wallet_address: felt252 = 0x123456;
+    let chain_symbol: ByteArray = "ETH";
+    let wallet_address: ByteArray = "0x1234567890abcdef";
 
-    dispatcher.add_wallets(chain_symbol, wallet_address, Option::None, Option::None, Option::None);
+    dispatcher
+        .add_wallets(
+            chain_symbol.clone(),
+            wallet_address.clone(),
+            Option::None(()),
+            Option::None(()),
+            Option::None(()),
+        );
 
-    let wallet = dispatcher.get_wallet(username, chain_symbol);
+    let wallet = dispatcher.get_wallet(username, chain_symbol.clone());
     assert(wallet.address == wallet_address, 'Wallet address mismatch');
-    assert(wallet.chain_symbol == chain_symbol, 'Chain ID mismatch');
+    assert(wallet.chain_symbol == chain_symbol, 'Chain symbol mismatch');
 }
 
 #[test]
@@ -255,11 +283,13 @@ fn test_get_wallet_invalid_username() {
     let dispatcher = IGatewayDispatcher { contract_address };
 
     let username: ByteArray = "";
-    dispatcher.get_wallet(username, 1);
+    let chain_symbol: ByteArray = "ETH";
+
+    dispatcher.get_wallet(username, chain_symbol);
 }
 
 #[test]
-#[should_panic(expected: ('INVALID_chain_symbol',))]
+#[should_panic(expected: ('INVALID_CHAIN_SYMBOL',))]
 fn test_get_wallet_invalid_chain() {
     let contract_address = deploy_contract();
     let dispatcher = IGatewayDispatcher { contract_address };
@@ -267,7 +297,9 @@ fn test_get_wallet_invalid_chain() {
     let username: ByteArray = "ryzen_xp";
     dispatcher.register_username(username.clone());
 
-    dispatcher.get_wallet(username, 0);
+    let chain_symbol: ByteArray = "";
+
+    dispatcher.get_wallet(username, chain_symbol);
 }
 
 // ==================== USER MANAGEMENT TESTS ====================
@@ -416,7 +448,13 @@ fn test_add_wallet_inactive_account() {
 
     dispatcher.deactivate_account();
 
-    dispatcher.add_wallets(1, 0x123456, Option::None, Option::None, Option::None);
+    let chain_symbol: ByteArray = "ETH";
+    let wallet_address: ByteArray = "0x1234567890abcdef";
+
+    dispatcher
+        .add_wallets(
+            chain_symbol, wallet_address, Option::None(()), Option::None(()), Option::None(()),
+        );
 }
 
 #[test]
@@ -428,11 +466,21 @@ fn test_remove_wallet_inactive_account() {
     let username: ByteArray = "ryzen_xp";
     dispatcher.register_username(username);
 
-    dispatcher.add_wallets(1, 0x123456, Option::None, Option::None, Option::None);
+    let chain_symbol: ByteArray = "ETH";
+    let wallet_address: ByteArray = "0x1234567890abcdef";
+
+    dispatcher
+        .add_wallets(
+            chain_symbol.clone(),
+            wallet_address,
+            Option::None(()),
+            Option::None(()),
+            Option::None(()),
+        );
 
     dispatcher.deactivate_account();
 
-    dispatcher.remove_wallet(1);
+    dispatcher.remove_wallet(chain_symbol);
 }
 
 #[test]
@@ -444,11 +492,21 @@ fn test_get_wallet_inactive_account() {
     let username: ByteArray = "ryzen_xp";
     dispatcher.register_username(username.clone());
 
-    dispatcher.add_wallets(1, 0x123456, Option::None, Option::None, Option::None);
+    let chain_symbol: ByteArray = "ETH";
+    let wallet_address: ByteArray = "0x1234567890abcdef";
+
+    dispatcher
+        .add_wallets(
+            chain_symbol.clone(),
+            wallet_address,
+            Option::None(()),
+            Option::None(()),
+            Option::None(()),
+        );
 
     dispatcher.deactivate_account();
 
-    dispatcher.get_wallet(username, 1);
+    dispatcher.get_wallet(username, chain_symbol);
 }
 
 #[test]
@@ -507,16 +565,10 @@ fn test_get_username_pass() {
 
     let username: ByteArray = "ryzen_xp";
 
-    println!("Caller address: {:?}", BOB());
-
     start_cheat_caller_address(contract_address, BOB());
     dispatcher.register_username(username.clone());
 
     let fetched_username = dispatcher.get_username(BOB());
-
-    println!("Original username: {}", username);
-    println!("Fetched username: {}", fetched_username);
-    println!("Username length - Original: {}, Fetched: {}", username.len(), fetched_username.len());
 
     assert(fetched_username == username, 'Username mismatch');
     stop_cheat_caller_address(contract_address);
@@ -530,8 +582,8 @@ fn test_get_all_user_wallets_pass() {
     let username: ByteArray = "ryzen_xp";
     dispatcher.register_username(username.clone());
 
-    dispatcher.add_wallets(1, 0x111, Option::None, Option::None, Option::None);
-    dispatcher.add_wallets(2, 0x222, Option::None, Option::None, Option::None);
+    dispatcher.add_wallets("ETH", "0x111", Option::None(()), Option::None(()), Option::None(()));
+    dispatcher.add_wallets("STRK", "0x222", Option::None(()), Option::None(()), Option::None(()));
 
     let wallets = dispatcher.get_all_user_wallets(username);
     assert(wallets.len() == 2, 'Should have 2 wallets');
@@ -554,5 +606,6 @@ fn test_is_account_active_invalid_username() {
     let contract_address = deploy_contract();
     let dispatcher = IGatewayDispatcher { contract_address };
 
-    dispatcher.is_account_active("");
+    let username: ByteArray = "";
+    dispatcher.is_account_active(username);
 }
