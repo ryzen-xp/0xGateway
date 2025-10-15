@@ -268,7 +268,7 @@ mod Gateway {
                     break;
                 }
                 idx += 1;
-            }
+            };
 
             assert(found, Errors::chain_symbol_NOT_FOUND);
 
@@ -277,7 +277,7 @@ mod Gateway {
                 chain_symbols_vec.at(idx).write(last_chain);
             }
 
-            chain_symbols_vec.pop().unwrap();
+            chain_symbols_vec.pop();
 
             self
                 .emit(
@@ -321,7 +321,7 @@ mod Gateway {
             while i != len {
                 chain_symbols_array.append(chain_symbols_vec.at(i).read());
                 i += 1;
-            }
+            };
 
             chain_symbols_array
         }
@@ -344,7 +344,7 @@ mod Gateway {
                 let wallet = self.user_wallets.read((username_hash, hash_username(chain_symbol)));
                 wallets.append(wallet);
                 i += 1;
-            }
+            };
 
             wallets
         }
