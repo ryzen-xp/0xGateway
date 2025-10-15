@@ -7,7 +7,7 @@ pub fn hash_username(username: ByteArray) -> felt252 {
     while i != username_len {
         hash_accumulator = pedersen(hash_accumulator, username[i].into());
         i += 1;
-    };
+    }
 
     hash_accumulator
 }
