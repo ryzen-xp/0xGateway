@@ -1,10 +1,15 @@
 # 🌉 0xGateway Protocol
 
+[![Live on Starknet Sepolia](https://img.shields.io/badge/Starknet_Sepolia-Live-blueviolet)](https://sepolia.starkscan.co/contract/0x063bd23c0c524fa9fa2693e4945009acf9ba80341564ab429f4ab578c6253eeb)
+[![Build](https://github.com/0xAXE/axe/actions/workflows/contract.yml/badge.svg)](https://github.com/0xGateway/axe/actions/workflows/CI.yml)
+[![Deployed on](https://img.shields.io/badge/Deployed%20on-Vercel-000000?logo=vercel&logoColor=white)](https://gateway-bay.vercel.app/)
+
+
 > **Send crypto to @username instead of 0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb**
 
 Replace complex wallet addresses with simple, memorable usernames across all blockchains.
 
-[![Live on Starknet Sepolia](https://img.shields.io/badge/Starknet_Sepolia-Live-blueviolet)](https://sepolia.starkscan.co/contract/0x063bd23c0c524fa9fa2693e4945009acf9ba80341564ab429f4ab578c6253eeb)
+
 
 **Contract Address (Sepolia Testnet):**  
 `0x063bd23c0c524fa9fa2693e4945009acf9ba80341564ab429f4ab578c6253eeb`
