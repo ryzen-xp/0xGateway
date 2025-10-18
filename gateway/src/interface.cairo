@@ -4,6 +4,7 @@ use starknet::ContractAddress;
 #[starknet::interface]
 pub trait IGateway<TContractState> {
     fn change_user_address(ref self: TContractState, new_address: ContractAddress);
+    fn change_username(ref self: TContractState, old_username: ByteArray, new_username: ByteArray);
     fn deactivate_account(ref self: TContractState);
     fn reactivate_account(ref self: TContractState);
     fn is_account_active(self: @TContractState, username: ByteArray) -> bool;

@@ -77,6 +77,109 @@ mod Gateway {
                 );
         }
 
+        /// Change Username
+        fn change_username(
+            ref self: ContractState, old_username: ByteArray, new_username: ByteArray,
+        ) {
+            assert(old_username.len() > 0 && new_username.len() > 0, Errors::INVALID_USERNAME);
+
+            let caller = get_caller_address();
+            let current_username = self.address_usernames.read(caller);
+
+            // Verify caller has a registered username
+            assert(current_username.len() != 0, Errors::USER_NOT_REGISTERED);
+
+            // Verify the old_username matches the caller's current username
+            assert(current_username == old_username, Errors::INVALID_USERNAME);
+
+            // Verify the new username is not already taken
+            assert(!self.check_username_exist(new_username.clone()), Errors::USERNAME_TAKEN);
+
+            // Verify account is active
+            assert(self.is_account_active(old_username.clone()), Errors::ACCOUNT_INACTIVE);
+
+            let old_username_hash = hash_username(old_username.clone());
+            let new_username_hash = hash_username(new_username.clone());
+
+            // Get current user info
+            let mut old_user_info = self.usernames.read(old_username_hash);
+
+            // Create new user info with updated username
+            let new_user_info = UserInfo {
+                username: new_username.clone(),
+                user_address: old_user_info.user_address,
+                active: old_user_info.active,
+            };
+
+            // Write new user info
+            self.usernames.write(new_username_hash, new_user_info);
+
+            // Clear old username entry
+            let empty_user = UserInfo { username: "", user_address: Zero::zero(), active: false };
+            self.usernames.write(old_username_hash, empty_user);
+
+            // Update address to username mapping
+            self.address_usernames.write(caller, new_username.clone());
+
+            // Migrate all wallets from old username hash to new username hash
+            let chain_symbols_vec = self.user_chain_symbols.entry(old_username_hash);
+            let len = chain_symbols_vec.len();
+
+            // Copy chain symbols to new username
+            let mut new_chain_symbols = self.user_chain_symbols.entry(new_username_hash);
+
+            let mut i: u64 = 0;
+            while i != len {
+                let chain_symbol = chain_symbols_vec.at(i).read();
+
+                // Read wallet from old username
+                let wallet = self
+                    .user_wallets
+                    .read((old_username_hash, hash_username(chain_symbol.clone())));
+
+                // Write wallet to new username
+                self
+                    .user_wallets
+                    .write((new_username_hash, hash_username(chain_symbol.clone())), wallet);
+
+                // Add chain symbol to new username's list
+                new_chain_symbols.append().write(chain_symbol.clone());
+
+                // Clear wallet from old username
+                let empty_wallet = Wallet {
+                    chain_symbol: "",
+                    address: "",
+                    memo: Option::None,
+                    tag: Option::None,
+                    metadata: Option::None,
+                    updated_at: 0,
+                };
+                self
+                    .user_wallets
+                    .write((old_username_hash, hash_username(chain_symbol)), empty_wallet);
+
+                i += 1;
+            }
+
+            // Clear old chain symbols vector (pop all elements)
+            let mut remaining = len;
+            while remaining != 0 {
+                chain_symbols_vec.pop();
+                remaining -= 1;
+            }
+            // Emit event (you may need to add this to your events module)
+        // self.emit(
+        //     Event::UsernameChanged(
+        //         UsernameChanged {
+        //             old_username,
+        //             new_username,
+        //             user_address: caller,
+        //             timestamp: get_block_timestamp(),
+        //         },
+        //     ),
+        // );
+        }
+
         /// Deactivate user account
         fn deactivate_account(ref self: ContractState) {
             let caller = get_caller_address();

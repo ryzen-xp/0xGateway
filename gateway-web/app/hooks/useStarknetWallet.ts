@@ -1,6 +1,8 @@
 import { useAccount, useConnect, useDisconnect } from "@starknet-react/core";
 import { useCallback, useEffect, useState } from "react";
 import { useStarknetContract } from "./useStarknetContract";
+import { WallerAccountProviderUrl } from "./";
+import toast from "react-hot-toast";
 
 export const useStarknetWallet = () => {
   const { address, isConnected, account } = useAccount();
@@ -15,16 +17,22 @@ export const useStarknetWallet = () => {
     return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
   };
 
-  const handleConnect = useCallback(() => {
+  const handleConnect = useCallback(async () => {
     const connector = connectors[0];
-    if (connector) {
-      connect({ connector });
+
+    try {
+      await connect({ connector });
+      // toast.success("Wallet connected successfully!");
+    } catch (error) {
+      console.error("Connection error:", error);
+      toast.error("Failed to connect wallet. Please try again.");
     }
   }, [connectors, connect]);
 
   const handleDisconnect = useCallback(() => {
     disconnect();
     setUsername("");
+    toast.success("Wallet disconnected");
   }, [disconnect]);
 
   useEffect(() => {
@@ -38,6 +46,7 @@ export const useStarknetWallet = () => {
           }
         } catch (error) {
           console.error("Error fetching username:", error);
+          toast.error("Failed to fetch username");
         }
       }
     };

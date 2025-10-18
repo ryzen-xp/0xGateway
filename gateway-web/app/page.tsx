@@ -1,5 +1,6 @@
 "use client";
 import React, { useState } from "react";
+import { Toaster } from "react-hot-toast";
 import { Navbar } from "./components/Navbar";
 import { HomePage } from "./components/HomePage";
 import { DashboardPage } from "./components/DashboardPage";
@@ -14,6 +15,31 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-900 via-purple-950 to-black text-white">
+      {/* Toast notifications */}
+      <Toaster
+        position="bottom-right"
+        toastOptions={{
+          duration: 4000,
+          style: {
+            background: "#1f2937",
+            color: "#fff",
+            border: "1px solid #374151",
+          },
+          success: {
+            iconTheme: {
+              primary: "#10b981",
+              secondary: "#fff",
+            },
+          },
+          error: {
+            iconTheme: {
+              primary: "#ef4444",
+              secondary: "#fff",
+            },
+          },
+        }}
+      />
+
       {/* Navbar always visible */}
       <Navbar currentPage={currentPage} setCurrentPage={setCurrentPage} />
 
