@@ -1,7 +1,6 @@
 import { useAccount, useConnect, useDisconnect } from "@starknet-react/core";
 import { useCallback, useEffect, useState } from "react";
 import { useStarknetContract } from "./useStarknetContract";
-import { WallerAccountProviderUrl } from "./";
 import toast from "react-hot-toast";
 
 export const useStarknetWallet = () => {
